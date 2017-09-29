@@ -8,7 +8,7 @@ class Model(object):
         """Fits the model parameters to the dataset.
 
         Args:
-            dataset: Instance of dataset class (TODO: see ..../dataset.py)
+            dataset: Instance of dataset class (see ../dataset/dataset.py)
               
         Returns:
             Metrics like average loss, accuracy, etc..
