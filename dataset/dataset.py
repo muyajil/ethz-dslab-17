@@ -9,7 +9,7 @@ class Dataset(object):
     indices = None
     current_batch = 0
     
-    def __init__(self, config):
+    def __init__(self, config, indices=None):
         """Construct Dataset
         
         Args:
@@ -24,7 +24,10 @@ class Dataset(object):
             Dataset
         """
         self.config = config
-        self.indices = rand.shuffle(range(1, config.num_datapoints+1))
+        if indices is None:
+            self.indices = rand.shuffle(range(1, config.num_datapoints+1))
+        else:
+            self.indices = indices
     
     def reset_batches(self):
         self.current_batch = 0
@@ -64,4 +67,8 @@ class Dataset(object):
             Two new Dataset objects
         """
         
-        raise NotImplementedError("Method not implemented.")
+        num_datapoints_split = int(split_ratio*self.config.num_datapoints)
+        split_1 = self.indices[:num_datapoints_split]
+        split_2 = self.indices[num_datapoints_split:]
+        return Dataset(self.config, split_1), Dataset(self.config, split_2)
+        
