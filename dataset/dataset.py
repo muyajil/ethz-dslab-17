@@ -38,11 +38,10 @@ class Dataset(object):
         """Returns the next batch of the dataset
         
         Args:
-            None
+            batch_size: Size of batch
             
         Returns:
-            The next batch of data
-            The batch_size if forced even if augmentation is used, if so we use fewer datapoints per batch
+            The next batch of data in a form that is ready to be consumed by the model
         """
         lower = self.current_batch*batch_size
         upper = (self.current_batch+1)*batch_size
