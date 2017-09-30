@@ -1,42 +1,36 @@
-from random import shuffle
+import random as rand
+import os
 
 class Dataset(object):
     """Class representing a dataset
     """
     
-    base_path = None
-    base_name = None
-    preprocess_pipeline = None
+    config = None
     indices = None
-    batch_size = None
     current_batch = 0
-    load_function = None
     
-    def __init__(self, base_path, 
-                base_name, preprocess_pipeline, 
-                num_datapoints, batch_size,
-                load_function):
+    def __init__(self, config):
         """Construct Dataset
         
         Args:
-            base_path: Path where the data files are
-            base_name: Base name of the files. The files should be numbered 1 ... after the base_name
-            preprocess_pipeline: List of functions that preprocess (augment, transform) datapoints
-            num_datapoints: Number of datapoints
-            batch_size: Number of datapoints per batch
-            load_function: Function that loads the data into the desired form from a file
+            config: A config of a datasource. The following fields must be provided:
+                config.base_path
+                config.base_name
+                config.preprocess_pipeline
+                config.num_datapoints
+                config.load_function
         
         Returns:
             Dataset
         """
-        self.base_name = base_name
-        self.base_path = base_path
-        self.preprocess_pipeline = preprocess_pipeline
-        self.batch_size = batch_size
-        self.indices = shuffle(list(range(1, num_datapoints+1)))
-        self.load_function = load_function
-        
-    def get_next_batch(self):
+        self.config = config
+        self.indices = rand.shuffle(range(1, config.num_datapoints+1))
+    
+    def reset_batches(self):
+        self.current_batch = 0
+        self.indices = rand.shuffle(range(1, self.config.num_datapoints+1))
+
+    def get_next_batch(self, batch_size):
         """Returns the next batch of the dataset
         
         Args:
@@ -46,9 +40,19 @@ class Dataset(object):
             The next batch of data
             The batch_size if forced even if augmentation is used, if so we use fewer datapoints per batch
         """
-        self.current_batch = self.current_batch + 1
+        lower = self.current_batch*batch_size
+        upper = (self.current_batch+1)*batch_size
+        batch_ids = self.indices[lower:upper]
+        batch = []
+        for data_point_id in batch_ids:
+            data_point_file = os.path.join(self.config.base_name + data_point_id, self.config.base_path)
+            data_point = self.config.load_function(data_point_file)
+            processed_data_point = [data_point]
+            for fun in self.config.preprocess_pipeline:
+                processed_data_point = map(fun, processed_data_point)
+            batch.append(rand.choice(processed_data_point))
         
-        raise NotImplementedError("Method not implemented.")
+        return batch
         
     def split(self, split_ratio):
         """Splits the Dataset into Test and Train 
