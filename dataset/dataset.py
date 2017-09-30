@@ -24,6 +24,7 @@ class Dataset(object):
             Dataset
         """
         self.config = config
+        
         if indices is None:
             self.indices = rand.shuffle(range(1, config.num_datapoints+1))
         else:
@@ -68,7 +69,14 @@ class Dataset(object):
         """
         
         num_datapoints_split = int(split_ratio*self.config.num_datapoints)
+        
         split_1 = self.indices[:num_datapoints_split]
+        config_1 = self.config
+        config_1.num_datapoints = num_datapoints_split
+        
         split_2 = self.indices[num_datapoints_split:]
-        return Dataset(self.config, split_1), Dataset(self.config, split_2)
+        config_2 = self.config
+        config_2.num_datapoints = self.config.num_datapoints - num_datapoints_split
+        
+        return Dataset(config_1, split_1), Dataset(config_2, split_2)
         
