@@ -61,7 +61,7 @@ class Dataset(object):
         """Splits the Dataset into Test and Train 
         
         Args:
-            split_ratio: Ratio of the data that should be in the test set.
+            split_ratio: Ratio of the data that should be in the train set.
             
         Returns:
             Two new Dataset objects
@@ -69,13 +69,13 @@ class Dataset(object):
         
         num_datapoints_split = int(split_ratio*self.config.num_datapoints)
         
-        split_1 = self.indices[:num_datapoints_split]
-        config_1 = self.config
-        config_1.num_datapoints = num_datapoints_split
+        indices_train = self.indices[:num_datapoints_split]
+        config_train = self.config
+        config_train.num_datapoints = num_datapoints_split
         
-        split_2 = self.indices[num_datapoints_split:]
-        config_2 = self.config
-        config_2.num_datapoints = self.config.num_datapoints - num_datapoints_split
+        indices_test = self.indices[num_datapoints_split:]
+        config_test = self.config
+        config_test.num_datapoints = self.config.num_datapoints - num_datapoints_split
         
-        return Dataset(config_1, split_1), Dataset(config_2, split_2)
+        return Dataset(config_train, indices_train), Dataset(config_test, indices_test)
         
