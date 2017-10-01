@@ -8,6 +8,7 @@ class Dataset(object):
     config = None
     indices = None
     current_batch = 0
+    current_epoch = 1
     
     def __init__(self, config, indices=None):
         """Construct Dataset
@@ -59,6 +60,7 @@ class Dataset(object):
         
         if lower == upper: # Epoch is done, start the next one
             self.reset_batches()
+            self.current_epoch = self.current_epoch + 1
             return self.get_next_batch(batch_size)
         
         batch_ids = self.indices[lower:upper]
