@@ -15,6 +15,7 @@ class Dataset(object):
         
         Args:
             config: A DatasetConfig object
+            indices: The indices of datapoints in this dataset
         
         Returns:
             Dataset
@@ -46,7 +47,7 @@ class Dataset(object):
         for i in range(diff):
             batch.append(batch[i % len(batch)])
 
-    def get_next_batch(self, batch_size):
+    def batch(self, batch_size):
         """Returns the next batch of the dataset
         
         Args:
@@ -55,30 +56,32 @@ class Dataset(object):
         Returns:
             The next batch of data in a form that is ready to be consumed by the model
         """
-        lower = min(self.current_batch*batch_size, self.config.num_datapoints)
-        upper = min((self.current_batch+1)*batch_size, self.config.num_datapoints)
-        
-        if lower == upper: # Epoch is done, start the next one
-            self.reset_batches()
-            self.current_epoch = self.current_epoch + 1
-            return self.get_next_batch(batch_size)
-        
-        batch_ids = self.indices[lower:upper]
-        batch = []
-        for batch_id in batch_ids:
-            data_point_id = self.get_data_point_id(batch_id)
-            data_point_version = self.get_data_point_version(batch_id, data_point_id)
-            data_point_file = os.path.join(self.config.base_name + data_point_id, self.config.base_path)
-            data_point = self.config.load_function(data_point_file)
-            processed_data_point = [data_point]
-            for fun in self.config.preprocess_pipeline:
-                processed_data_point = map(fun, processed_data_point)
-            batch.append(processed_data_point[data_point_version])
-        
-        if len(batch) < batch_size:
-            self.pad_batch(batch, batch_size)
-        
-        return batch
+        while True:
+            lower = min(self.current_batch*batch_size, self.config.num_datapoints)
+            upper = min((self.current_batch+1)*batch_size, self.config.num_datapoints)
+            
+            if lower == upper: # Epoch is done, start the next one
+                self.reset_batches()
+                self.current_epoch = self.current_epoch + 1
+                return
+            
+            batch_ids = self.indices[lower:upper]
+            batch = []
+            for batch_id in batch_ids:
+                data_point_id = self.get_data_point_id(batch_id)
+                data_point_version = self.get_data_point_version(batch_id, data_point_id)
+                data_point_file = os.path.join(self.config.base_name + data_point_id, self.config.base_path)
+                data_point = self.config.load_function(data_point_file)
+                processed_data_point = [data_point]
+                for fun in self.config.preprocess_pipeline:
+                    processed_data_point = map(fun, processed_data_point)
+                batch.append(processed_data_point[data_point_version])
+            
+            if len(batch) < batch_size:
+                self.pad_batch(batch, batch_size)
+            
+            self.current_batch = self.current_batch + 1
+            yield batch
         
     def split(self, split_ratio):
         """Splits the Dataset into Test and Train 
