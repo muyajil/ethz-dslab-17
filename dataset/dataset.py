@@ -80,7 +80,7 @@ class Dataset(object):
         for i in range(diff):
             batch.append(batch[i % len(batch)])
 
-    def batch(self, batch_size):
+    def batch_iter(self, batch_size):
         """Returns the next batch of the dataset
         
         Args:
