@@ -94,7 +94,7 @@ class Dataset(object):
             lower = min(self.current_batch*batch_size, self.config.num_datapoints)
             upper = min((self.current_batch+1)*batch_size, self.config.num_datapoints)
             
-            if lower == upper: # Epoch is done, start the next one
+            if lower == upper:
                 self.reset_batches()
                 self.current_epoch = self.current_epoch + 1
                 return
