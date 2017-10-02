@@ -20,6 +20,7 @@ class Dataset(object):
         Returns:
             Dataset
         """
+        
         self.config = config
         
         if indices is None:
@@ -29,10 +30,22 @@ class Dataset(object):
             self.indices = indices
     
     def reset_batches(self):
+        """Reset current_batch and re shuffle indices for a new epoch
+        """
+        
         self.current_batch = 0
         rand.shuffle(self.indices)
         
     def get_data_point_id(self, batch_id):
+        """Get datapoint ID from batch_id of datapoint
+        
+        Args:
+            batch_id: The batch_id goes from 1 to num_datapoints*augmentation_multiplicator. Each augmented datapoint is represented by a batch_id.
+        
+        Returns:
+            Datapoint ID
+        """
+        
         data_point_id = batch_id % self.config.num_datapoints
         if data_point_id == 0:
             return self.config.num_datapoints
@@ -40,9 +53,29 @@ class Dataset(object):
             return data_point_id
 
     def get_data_point_version(self, batch_id, data_point_id):
+        """Get datapoint version 
+        
+        Args:
+            batch_id: Batch ID of the datapoint
+            data_point_id: ID of the datapoint
+            
+        Returns:
+            Which augmented version of the datapoint to choose.
+        """
+        
         return (batch_id / data_point_id) - 1
         
     def pad_batch(self, batch, batch_size):
+        """Pad a batch
+        
+        Args:
+            batch_size: Batch size
+            batch: A batch that is smaller than batch_size
+        
+        Returns:
+            A batch that is padded to batch_size
+        """
+        
         diff = batch_size - len(batch)
         for i in range(diff):
             batch.append(batch[i % len(batch)])
@@ -56,6 +89,7 @@ class Dataset(object):
         Returns:
             The next batch of data in a form that is ready to be consumed by the model
         """
+        
         while True:
             lower = min(self.current_batch*batch_size, self.config.num_datapoints)
             upper = min((self.current_batch+1)*batch_size, self.config.num_datapoints)
