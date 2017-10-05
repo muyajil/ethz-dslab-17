@@ -10,7 +10,7 @@ class Dataset(object):
         After implementing at the end of the file construct this object and 
         name it dataset.
         From main.py we will import it as follows: 
-        from mars_rover import dataset
+        from datasets.mars_rover import dataset
     """
     
     _indices = None
