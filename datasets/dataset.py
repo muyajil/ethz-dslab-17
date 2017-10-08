@@ -163,7 +163,7 @@ class Dataset(object):
             if len(batch) < batch_size:
                 self._pad_batch(batch, batch_size)
             
-            self.current_batch = self.current_batch + 1
+            self._current_batch = self._current_batch + 1
             yield batch
         
     def split(self, split_ratio):
