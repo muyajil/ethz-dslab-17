@@ -1,5 +1,6 @@
 import argparse
 from pydoc import locate
+from datasets.dataset import Dataset
 
 model = None
 dataset = None
@@ -53,7 +54,9 @@ if __name__ == "__main__":
                     
     args = parser.parse_args()
     
-    dataset = locate("datasets." + args.dataset_name + ".dataset")
-    model = locate("models." + args.model_name + ".model")
+    dataset_module = locate("datasets." + args.dataset_name)
+    dataset = getattr(dataset_module, "dataset")
+    model_module = locate("models." + args.model_name)
+    model = getattr(model_module, "model")
     
     run_model(args.run_mode, args.batch_size, args.epochs)
