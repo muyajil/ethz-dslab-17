@@ -16,27 +16,18 @@ class Dataset(object):
     _indices = None
     _current_batch = 0
     _current_epoch = 1
-    _base_path = None
-    _base_name = None
-    _file_ending = None
     _num_datapoints = None
     _augmentation_multiplicator = None
     
     # TODO: augmentation_multiplicator is a bit nasty, but I dont have a better 
     # solution at the moment
     def __init__(self, 
-                base_path, 
-                base_name, 
-                file_ending, 
                 num_datapoints, 
                 augmentation_multiplicator, 
                 indices=None):
         """Construct Dataset
         
         Args:
-            base_path: Directory where datapoint files are
-            base_name: Base name of the datapoint files
-            file_ending: File ending of datapoint files
             num_datapoints: Number of datapoints
             augmentation_multiplicator: How many datapoints result from 
                                         pushing one file through the 
@@ -47,12 +38,9 @@ class Dataset(object):
             Dataset
         """
         
-        self._base_path = base_path
-        self._base_name = base_name
         self._num_datapoints = num_datapoints
         self._augmentation_multiplicator = augmentation_multiplicator
-        self._file_ending = file_ending
-        
+
         if indices is None:
             self._indices = \
                 list(range(1, augmentation_multiplicator*num_datapoints+1))
@@ -67,11 +55,11 @@ class Dataset(object):
         self._current_batch = 0
         rand.shuffle(self._indices)
         
-    def _load_function(self, filename):
+    def _load_function(self, file_id):
         """Load a file into a tensor
         
         Args:
-            filename: Absolute path to a file
+            file_id: Id of a file representing a datapoint
         
         Returns:
             A tensor containing the file in the desired form
@@ -163,13 +151,8 @@ class Dataset(object):
                 
                 data_point_version = self._get_data_point_version(batch_id, 
                                                                   data_point_id)
-                                                                  
-                data_point_file = os.path.join(self._base_name + 
-                                               data_point_id + 
-                                               self._file_ending, 
-                                               self._base_path)
                                                
-                data_point = self._load_function(data_point_file)
+                data_point = self._load_function(data_point_id)
                 
                 processed_data_point = [data_point]
                 
@@ -199,16 +182,10 @@ class Dataset(object):
         
         indices_test = self._indices[num_datapoints_train:]
         
-        return (Dataset(self._base_path, 
-                        self._base_name, 
-                        self._file_ending, 
-                        num_datapoints_train, 
+        return (Dataset(num_datapoints_train, 
                         self._augmentation_multiplicator, 
                         indices_train), 
-               Dataset(self._base_path, 
-                       self._base_name, 
-                       self._file_ending, 
-                       self._num_datapoints - num_datapoints_train, 
+               Dataset(self._num_datapoints - num_datapoints_train, 
                        self._augmentation_multiplicator, 
                        indices_test))
         
