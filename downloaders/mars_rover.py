@@ -2,6 +2,7 @@ import httplib2
 from bs4 import BeautifulSoup
 import os
 import urllib.request
+import sys
 
 
 class MarsRoverDownloader(object):
@@ -21,13 +22,13 @@ class MarsRoverDownloader(object):
         else:
             self._already_downloaded = True
 
-    def download(self):
+    def download(self, num_datapoints=sys.maxsize):
         if self._already_downloaded:
             return len(os.listdir(self._data_path)), self._data_path, self._camera, ".jpg"
 
         page = 0
         image_id = 0
-        while(True):
+        while image_id <= num_datapoints:
             page = page + 1
             url = "http://mars-ogler.com/?per-page=100&page=" + str(page) + "&cams=" + self._camera
             http = httplib2.Http()
@@ -39,7 +40,7 @@ class MarsRoverDownloader(object):
             image_links = list(map(lambda x: x['href'], nasa_links[0::2]))
 
             if len(image_links) == 0:
-                return image_id, self._data_path, self._camera, ".jpg"
+                break
             else:
                 for link in image_links:
                     image_id = image_id + 1
@@ -47,6 +48,8 @@ class MarsRoverDownloader(object):
                     urllib.request.urlretrieve(link, os.path.join(self._data_path, file_name))
                     if image_id % 100 == 0:
                         print("Downloaded " + str(image_id) + " images.")
+
+        return image_id, self._data_path, self._camera, ".jpg"
 
 
 if __name__ == '__main__':
