@@ -1,5 +1,5 @@
 import random as rand
-import os
+
 
 class Dataset(object):
     """Class representing a dataset
