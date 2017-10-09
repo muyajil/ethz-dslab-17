@@ -12,7 +12,7 @@ class MarsRoverMahli(Dataset):
 
     def _load_function(self, file_id):
         file_path = os.path.join(self._base_path, self._base_name + "_" + file_id + self._file_ending)
-        return misc.imread(file_path) # returns a tensor of shape length x width x 3
+        return misc.imread(file_path) # returns a tensor of shape length x width x 3 for rgb
 
     def _preprocess_pipeline(self):
         return []
