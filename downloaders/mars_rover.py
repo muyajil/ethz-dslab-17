@@ -45,8 +45,10 @@ class MarsRoverDownloader(object):
                     image_id = image_id + 1
                     file_name = self._camera + "_" + str(image_id) + ".jpg"
                     urllib.request.urlretrieve(link, os.path.join(self._data_path, file_name))
+                    if image_id % 100 == 0:
+                        print("Downloaded" + str(image_id) + "images.")
 
 
 if __name__ == '__main__':
     downloader = MarsRoverDownloader("mahli")
-    downloader.download()
+    print(downloader.download())
