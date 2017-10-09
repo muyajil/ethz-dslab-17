@@ -18,4 +18,4 @@ class MarsRoverMahli(Dataset):
         return []
 
 
-dataset = MarsRoverMahli(1)
+dataset = MarsRoverMahli(augmentation_multiplicator=1)
