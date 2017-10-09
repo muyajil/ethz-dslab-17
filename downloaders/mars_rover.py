@@ -2,8 +2,10 @@ import httplib2
 from bs4 import BeautifulSoup
 import os
 import urllib.request
+import urllib.error
 import sys
 import argparse
+import time
 
 
 class MarsRoverDownloader(object):
@@ -46,7 +48,11 @@ class MarsRoverDownloader(object):
                 for link in image_links:
                     image_id = image_id + 1
                     file_name = self._camera + "_" + str(image_id) + ".jpg"
-                    urllib.request.urlretrieve(link, os.path.join(self._data_path, file_name))
+                    try:
+                        urllib.request.urlretrieve(link, os.path.join(self._data_path, file_name))
+                    except urllib.error.HTTPError:
+                        time.sleep(180)
+                        image_id = image_id - 1
                     if image_id % 100 == 0:
                         print("Downloaded " + str(image_id) + " images.")
 
