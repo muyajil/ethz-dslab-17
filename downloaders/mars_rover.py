@@ -56,7 +56,7 @@ class MarsRoverDownloader(object):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser("Specify which camera to download the images from")
     parser.add_argument("camera", metavar="camera", type=str,
-                        choices=["mahli", "mastcam", "chemcam", "navcam", "hazcam"],
+                        choices=["mahli", "mastcam", "chemcam"],
                         help="The id of the camera")
     parser.add_argument("--num_images", dest="num_images", type=int, default=sys.maxsize,
                         help="Number of images to download.")
