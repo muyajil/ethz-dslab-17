@@ -3,6 +3,7 @@ from bs4 import BeautifulSoup
 import os
 import urllib.request
 import sys
+import argparse
 
 
 class MarsRoverDownloader(object):
@@ -53,5 +54,11 @@ class MarsRoverDownloader(object):
 
 
 if __name__ == '__main__':
-    downloader = MarsRoverDownloader("mahli")
-    print(downloader.download())
+    parser = argparse.ArgumentParser("Specify which camera to download the images from")
+    parser.add_argument("camera", metavar="camera", type=str,
+                        choices=["mahli", "mastcam", "chemcam", "navcam", "hazcam"],
+                        help="The id of the camera")
+    parser.add_argument("--num_images", dest="num_images", type=int, help="Number of images to download.")
+    args = parser.parse_args()
+    downloader = MarsRoverDownloader(args.camera)
+    print(downloader.download(args.num_images))
