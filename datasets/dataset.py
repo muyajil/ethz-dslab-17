@@ -22,8 +22,8 @@ class Dataset(object):
     _num_datapoints = None
     _augmentation_multiplicator = None
     
-    # TODO: augmentation_multiplicator is a bit nasty, but I dont have a better 
-    # solution at the moment
+    # TODO: augmentation_multiplicator is a bit nasty, but I dont have a better solution at the moment
+    # TODO: Check handling of num datapoints again.
     def __init__(self, augmentation_multiplicator, indices=None):
         """Construct Dataset
         
@@ -145,8 +145,8 @@ class Dataset(object):
         """
         
         while True:
-            lower = min(self._current_batch*batch_size, self._num_datapoints)
-            upper = min((self._current_batch+1)*batch_size, self._num_datapoints)
+            lower = min(self._current_batch*batch_size, len(self._indices))
+            upper = min((self._current_batch+1)*batch_size, len(self._indices))
             
             if lower == upper:
                 self._reset_batches()
@@ -165,7 +165,7 @@ class Dataset(object):
                 
                 processed_data_point = [data_point]
                 
-                for fun in self._preprocess_pipeline:
+                for fun in self._preprocess_pipeline():
                     processed_data_point = map(fun, processed_data_point)
                 batch.append(processed_data_point[data_point_version])
             
@@ -191,10 +191,5 @@ class Dataset(object):
         
         indices_test = self._indices[num_datapoints_train:]
         
-        return (Dataset(num_datapoints_train, 
-                        self._augmentation_multiplicator, 
-                        indices_train), 
-               Dataset(self._num_datapoints - num_datapoints_train, 
-                       self._augmentation_multiplicator, 
-                       indices_test))
-        
+        return (Dataset(self._augmentation_multiplicator, indices_train),
+                Dataset(self._augmentation_multiplicator, indices_test))
