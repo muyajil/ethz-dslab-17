@@ -23,7 +23,7 @@ class Dataset(object):
     _augmentation_multiplicator = None
     
     # TODO: augmentation_multiplicator is a bit nasty, but I dont have a better solution at the moment
-    # TODO: Check handling of num datapoints again.
+
     def __init__(self, augmentation_multiplicator, indices=None):
         """Construct Dataset
         
@@ -106,7 +106,7 @@ class Dataset(object):
             return data_point_id
 
     def _get_data_point_version(self, batch_id, data_point_id):
-        """Get datapoint version 
+        """Get datapoint version
         
         Args:
             batch_id: Batch ID of the datapoint
