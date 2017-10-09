@@ -47,6 +47,14 @@ class Dataset(object):
             self._indices = indices
 
     def _download_data(self):
+        """Download datapoints from the source
+
+            Args:
+                None
+
+            Returns:
+                Tuple with 4 Elements: (num_datapoints, base_path, base_name, file_ending)
+        """
         raise NotImplementedError()
 
     def _reset_batches(self):
