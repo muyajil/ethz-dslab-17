@@ -14,6 +14,9 @@ class Dataset(object):
     """
     
     _indices = None
+    _base_path = None
+    _base_name = None
+    _file_ending = None
     _current_batch = 0
     _current_epoch = 1
     _num_datapoints = None
@@ -21,15 +24,11 @@ class Dataset(object):
     
     # TODO: augmentation_multiplicator is a bit nasty, but I dont have a better 
     # solution at the moment
-    def __init__(self, 
-                num_datapoints, 
-                augmentation_multiplicator, 
-                indices=None):
+    def __init__(self, augmentation_multiplicator, indices=None):
         """Construct Dataset
         
         Args:
-            num_datapoints: Number of datapoints
-            augmentation_multiplicator: How many datapoints result from 
+            augmentation_multiplicator: How many datapoints result from
                                         pushing one file through the 
                                         preprocess pipeline
             indices: The indices of datapoints in this dataset
@@ -37,17 +36,19 @@ class Dataset(object):
         Returns:
             Dataset
         """
-        
-        self._num_datapoints = num_datapoints
+        self._num_datapoints, self._base_path, self._base_name, self._file_ending = self._download_data()
         self._augmentation_multiplicator = augmentation_multiplicator
 
         if indices is None:
             self._indices = \
-                list(range(1, augmentation_multiplicator*num_datapoints+1))
+                list(range(1, augmentation_multiplicator*self._num_datapoints+1))
             rand.shuffle(self._indices)
         else:
             self._indices = indices
-    
+
+    def _download_data(self):
+        raise NotImplementedError()
+
     def _reset_batches(self):
         """Reset current_batch and re shuffle indices for a new epoch
         """
