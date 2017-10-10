@@ -1,5 +1,5 @@
 import random as rand
-import os
+
 
 class Dataset(object):
     """Class representing a dataset
@@ -14,22 +14,21 @@ class Dataset(object):
     """
     
     _indices = None
+    _base_path = None
+    _base_name = None
+    _file_ending = None
     _current_batch = 0
     _current_epoch = 1
     _num_datapoints = None
     _augmentation_multiplicator = None
     
-    # TODO: augmentation_multiplicator is a bit nasty, but I dont have a better 
-    # solution at the moment
-    def __init__(self, 
-                num_datapoints, 
-                augmentation_multiplicator, 
-                indices=None):
+    # TODO: augmentation_multiplicator is a bit nasty, but I dont have a better solution at the moment
+
+    def __init__(self, augmentation_multiplicator, indices=None):
         """Construct Dataset
         
         Args:
-            num_datapoints: Number of datapoints
-            augmentation_multiplicator: How many datapoints result from 
+            augmentation_multiplicator: How many datapoints result from
                                         pushing one file through the 
                                         preprocess pipeline
             indices: The indices of datapoints in this dataset
@@ -37,17 +36,27 @@ class Dataset(object):
         Returns:
             Dataset
         """
-        
-        self._num_datapoints = num_datapoints
+        self._num_datapoints, self._base_path, self._base_name, self._file_ending = self._download_data()
         self._augmentation_multiplicator = augmentation_multiplicator
 
         if indices is None:
             self._indices = \
-                list(range(1, augmentation_multiplicator*num_datapoints+1))
+                list(range(1, augmentation_multiplicator*self._num_datapoints+1))
             rand.shuffle(self._indices)
         else:
             self._indices = indices
-    
+
+    def _download_data(self):
+        """Download datapoints from the source
+
+            Args:
+                None
+
+            Returns:
+                Tuple with 4 Elements: (num_datapoints, base_path, base_name, file_ending)
+        """
+        raise NotImplementedError()
+
     def _reset_batches(self):
         """Reset current_batch and re shuffle indices for a new epoch
         """
@@ -97,7 +106,7 @@ class Dataset(object):
             return data_point_id
 
     def _get_data_point_version(self, batch_id, data_point_id):
-        """Get datapoint version 
+        """Get datapoint version
         
         Args:
             batch_id: Batch ID of the datapoint
@@ -136,8 +145,8 @@ class Dataset(object):
         """
         
         while True:
-            lower = min(self._current_batch*batch_size, self._num_datapoints)
-            upper = min((self._current_batch+1)*batch_size, self._num_datapoints)
+            lower = min(self._current_batch*batch_size, len(self._indices))
+            upper = min((self._current_batch+1)*batch_size, len(self._indices))
             
             if lower == upper:
                 self._reset_batches()
@@ -156,7 +165,7 @@ class Dataset(object):
                 
                 processed_data_point = [data_point]
                 
-                for fun in self._preprocess_pipeline:
+                for fun in self._preprocess_pipeline():
                     processed_data_point = map(fun, processed_data_point)
                 batch.append(processed_data_point[data_point_version])
             
@@ -182,10 +191,5 @@ class Dataset(object):
         
         indices_test = self._indices[num_datapoints_train:]
         
-        return (Dataset(num_datapoints_train, 
-                        self._augmentation_multiplicator, 
-                        indices_train), 
-               Dataset(self._num_datapoints - num_datapoints_train, 
-                       self._augmentation_multiplicator, 
-                       indices_test))
-        
+        return (Dataset(self._augmentation_multiplicator, indices_train),
+                Dataset(self._augmentation_multiplicator, indices_test))
