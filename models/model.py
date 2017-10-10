@@ -1,4 +1,4 @@
-class Model(object):
+class AbstractModel(object):
     """Abstract model class
   
     Each model needs to derive from this class.
@@ -54,7 +54,7 @@ class Model(object):
         raise NotImplementedError("Method not implemented.")
 
 
-    def __new_model(self, config):
+    def _new_model(self, config):
         """Creates a new model.
       
         Args:
@@ -63,7 +63,7 @@ class Model(object):
         raise NotImplementedError("Method not implemented.")
 
     
-    def __restore_model(self, path):
+    def _restore_model(self, path):
         """Restore a stored model.
       
         Args:
@@ -81,10 +81,11 @@ class Model(object):
             restore: Path to a stored model state.
                      If None, a new model will be created.
         """
-      
+        self.debug = debug
         self.config = config
       
         if restore is None:
-            self.__new_model(config)
+            self._new_model(config)
         else:
-            self.__restore_model(restore)
+            self._restore_model(restore)
+            
