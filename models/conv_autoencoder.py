@@ -53,7 +53,7 @@ class ConvAutoenoder(AbstractModel):
         """
         self.autoencoder.compile(optimizer='adadelta', loss='mean_squared_error')
         self.autoencoder.fit(dataset, dataset, epochs=self.config.epochs,
-            batch_size=self.config.batch_size, shuffle=True,
+            batch_size=self.config.batch_size, shuffle=False,
             validation_data=None, verbose=1)
         # TODO    callbacks=[TensorBoard(log_dir='/tmp/autoencoder')])
 
