@@ -7,17 +7,10 @@ from keras.layers import Input
 from keras import backend as K
 from keras.models import Model
 
-from model import AbstractModel
+from model import AbstractModel, AbstractConfig
 
-class Config(object):
-    batch_size = 200
-    epochs = 2
-    
-    # Image dimensions
-    img_channels = 3
-    img_widht = 1024
-    img_height = 1024
-    
+class Config(AbstractConfig):
+
     # Conv layer
     c1_channels = 16
     c1_size = 7, 7
@@ -65,8 +58,8 @@ class ConvAutoenoder(AbstractModel):
                 test_loss = self.validate(testset, batch_size)
                 
         return "TODO"
-        
-        
+   
+
     def validate(self, testset, batch_size):
         """Validates the model on the provided dataset.
         
@@ -84,7 +77,7 @@ class ConvAutoenoder(AbstractModel):
             avg_loss += loss
         avg_loss /= float(n_batches)
         return avg_loss
-        
+ 
   
     def predict(self, datapoint):
         """Runs the model on the datapoint and produces the reconstruction.
@@ -123,7 +116,7 @@ class ConvAutoenoder(AbstractModel):
                     validation_data=test_generator,
                     validation_steps=test_n_batches)
         
-        
+    
     def _new_model(self, config):
         """Creates a new convolutional autoencoder model.
       
@@ -182,5 +175,6 @@ model = ConvAutoenoder(Config())
 if __name__ == '__main__':
     c = Config()
     model = ConvAutoenoder(c, debug=True)
+    model.set_up_model((3,1024,1024))
     
     

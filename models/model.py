@@ -1,3 +1,10 @@
+class AbstractConfig(object):
+
+    # Image dimensions
+    img_channels = None
+    img_widht = None
+    img_height = None
+
 class AbstractModel(object):
     """Abstract model class
   
@@ -19,8 +26,8 @@ class AbstractModel(object):
             Metrics like average loss, accuracy, etc..
         """
         raise NotImplementedError("Method not implemented.")
-        
-      
+
+
     def validate(self, dataset):
         """Validates the model on the provided dataset.
         
@@ -31,6 +38,7 @@ class AbstractModel(object):
             Some score to measure the performance of the model.
         """
         raise NotImplementedError("Method not implemented.")
+  
   
     def predict(self, datapoint):
         """Runs the model on the datapoint and produces the reconstruction.
@@ -87,21 +95,30 @@ class AbstractModel(object):
         """
         raise NotImplementedError("Method not implemented.")
 
+
+    def set_up_model(self, input_dimensions, restore=None):
+        """Sets up the model. This method MUST be called before anything else.
+           It is like a constructor.
+           TODO: This is nasty but I found no other way that works with the main.py
+           
+        Args:
+            input_dimensions: Dimensions of the data points.
+            restore: Path to a stored model state.
+                     If None, a new model will be created.
+        """
+        self.config.img_channels, self.config.img_widht, self.config.img_height = input_dimensions
+        if restore is None:
+            self._new_model(self.config)
+        else:
+            self._restore_model(restore)
+
   
-    def __init__(self, config, debug=False, restore=None):
+    def __init__(self, config, debug=False):
         """Initialization of the model.
       
         Args:
             config: Parameters that are model-specific.
-            debug: If True, only two batches will be used.
-            restore: Path to a stored model state.
-                     If None, a new model will be created.
+            debug:  Debug mode.
         """
         self.debug = debug
         self.config = config
-      
-        if restore is None:
-            self._new_model(config)
-        else:
-            self._restore_model(restore)
-            

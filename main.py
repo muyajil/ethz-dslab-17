@@ -41,7 +41,8 @@ if __name__ == "__main__":
     
     dataset_module = locate("datasets." + args.dataset_name)
     dataset = getattr(dataset_module, "dataset")
+    
     model_module = locate("models." + args.model_name)
     model = getattr(model_module, "model")
-    
+    model.set_up_model(dataset.get_data_dimension)
     run_model(args.run_mode, args.batch_size, args.epochs)
