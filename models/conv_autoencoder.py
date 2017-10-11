@@ -52,10 +52,10 @@ class ConvAutoenoder(AbstractModel):
         for batch in dataset.batch_iter(batch_size, image_dim):
             step = step + 1
             statistics_train = self.autoencoder.train_on_batch(batch, batch)
-            print("Train error batch " + str(step) + " : " + str(statistics_train))
+            print("Train error batch " + str(step) + ": " + str(statistics_train))
             
             # Evaluate model on testset after some steps
-            if testset is not None and step % test_period == 0:
+            if testset is not None and step % test_period == 0 and step > 200:
                 test_loss = self.validate(testset, batch_size, image_dim)
                 print("Test Loss: " + str(test_loss))
 
