@@ -190,10 +190,9 @@ class Dataset(object):
         indices_train = self._indices[:num_datapoints_train]
         
         indices_test = self._indices[num_datapoints_train:]
-        
-        return (Dataset(self._augmentation_multiplicator, indices_train),
-                Dataset(self._augmentation_multiplicator, indices_test))
 
+        return (type(self)(self._augmentation_multiplicator, indices_train),
+                type(self)(self._augmentation_multiplicator, indices_test))
 
     def get_size(self):
         """Returns the number of samples in the dataset.
@@ -201,14 +200,9 @@ class Dataset(object):
         
         return len(self._indices)
 
-
     def get_data_dimension(self):
-        """Returns the dimension of one datapoint.
-           Example (3, 1024, 1024)
-           TODO: implement this.
-        """
-        raise NotImplementedError()
-    
+        datapoint = self._load_function(1)
+        return datapoint.shape()
 
     def keras_generator(self, batch_size):
         """Wraps the batch_iter method to match the keras interace.

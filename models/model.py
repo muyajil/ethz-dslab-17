@@ -28,7 +28,7 @@ class AbstractModel(object):
         raise NotImplementedError("Method not implemented.")
 
 
-    def validate(self, dataset):
+    def validate(self, dataset, batch_size):
         """Validates the model on the provided dataset.
         
         Args:

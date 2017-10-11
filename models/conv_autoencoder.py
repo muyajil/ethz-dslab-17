@@ -7,7 +7,7 @@ from keras.layers import Input
 from keras import backend as K
 from keras.models import Model
 
-from model import AbstractModel, AbstractConfig
+from models.model import AbstractModel, AbstractConfig
 
 class Config(AbstractConfig):
 
@@ -50,7 +50,7 @@ class ConvAutoenoder(AbstractModel):
         """
         step = 0
         for batch in dataset.batch_iter(batch_size):
-            step =+ 1
+            step = step +  1
             statistics_train = self.autoencoder.train_on_batch(batch, batch)
             
             # Evaluate model on testset after some steps
@@ -123,39 +123,35 @@ class ConvAutoenoder(AbstractModel):
         Args:
             config: Model parameters.
         """
-        input_img = Input(shape=(config.img_channels,
-                                config.img_widht,
-                                config.img_height))
+        input_img = Input(shape=(config.img_widht,
+                                 config.img_height,
+                                 config.img_channels))
 
         c1 = Conv2D(
                 config.c1_channels,
                 config.c1_size,
                 strides=config.c1_strides,
                 padding='same',
-                data_format='channels_first',
                 activation='relu')(input_img)
 
         encoded = MaxPooling2D(
                 pool_size=config.p1_size,
-                padding='same',
-                data_format='channels_first')(c1)
+                padding='same')(c1)
                 
         d1 = Conv2D(
                 config.d1_channels,
                 config.d1_size,
                 strides=config.d1_strides,
                 padding='same',
-                data_format='channels_first',
                 activation='relu')(encoded)
                 
-        u1 = UpSampling2D(size=config.u1_size, data_format='channels_first')(d1)
+        u1 = UpSampling2D(size=config.u1_size)(d1)
         
         decoded = Conv2D(
                 config.d2_channels,
                 config.d2_size,
                 strides=config.d2_strides,
                 padding='same',
-                data_format='channels_first',
                 activation='sigmoid')(u1)
                 
         self.autoencoder = Model(input_img, decoded)
