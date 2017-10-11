@@ -190,6 +190,7 @@ class Dataset(object):
         indices_train = self._indices[:num_datapoints_train]
         
         indices_test = self._indices[num_datapoints_train:]
-        
-        return (Dataset(self._augmentation_multiplicator, indices_train),
-                Dataset(self._augmentation_multiplicator, indices_test))
+
+        return (type(self)(self._augmentation_multiplicator, indices_train),
+                type(self)(self._augmentation_multiplicator, indices_test))
+
