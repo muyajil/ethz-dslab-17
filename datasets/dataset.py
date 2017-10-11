@@ -194,7 +194,13 @@ class Dataset(object):
                 self._pad_batch(batch, batch_size)
             
             self._current_batch = self._current_batch + 1
-            yield np.stack(batch)
+            try:
+                result = np.stack(batch)
+            except ValueError:
+                sizes = list(map(lambda x: x.shape, batch))
+                print(sizes)
+                print(batch)
+            yield result
         
     def split(self, split_ratio):
         """Splits the Dataset into Test and Train 
@@ -223,11 +229,6 @@ class Dataset(object):
         """
         
         return len(self._indices)
-
-    def get_data_dimension(self):
-        datapoint = self._load_function(1)
-        print("Shape of datapoints: " + str(datapoint.shape))
-        return datapoint.shape
 
     def keras_generator(self, batch_size):
         """Wraps the batch_iter method to match the keras interace.
