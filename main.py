@@ -9,33 +9,18 @@ def run_model(run_mode, batch_size, epochs):
     """Runs a model based on command line arguments
     """
     if run_mode == "debug":
+        batch_iterator = dataset.batch_iter(batch_size)
         for i in range(2):
-            batch_iterator = dataset.batch_iter(batch_size)
             batch = next(batch_iterator)
     
     if run_mode == "test":
         train_set, test_set = dataset.split(0.9)
         for i in range(epochs):
-            batch_iterator_train = train_set.batch_iter(batch_size)
-            try:
-                while True:
-                    batch = next(batch_iterator_train)
-                    # Train batch
-                    # Evaluate on test set
-            except(StopIteration):
-                pass
-                #Start new epoch
+            statistics = model.train_epoch(train_set, batch_size, testset=test_set, test_period=1)
     
     if run_mode == "prod":
         for i in range(epochs):
-            batch_iterator = dataset.batch_iter(batch_size)
-            try:
-                while True:
-                    batch = next(batch_iterator)
-                    # Train batch
-            except(StopIteration):
-                pass
-                # Start new epoch
+            statistics = model.train_epoch(dataset, batch_size)
     
 if __name__ == "__main__":
     parser = argparse.ArgumentParser("Pass the arguments for the model run")

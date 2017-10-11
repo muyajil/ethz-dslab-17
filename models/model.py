@@ -4,17 +4,22 @@ class AbstractModel(object):
     Each model needs to derive from this class.
     """
   
-    def train(self, dataset):
+    def train_epoch(self, dataset, batch_size, testset=None, test_period=None):
         """Fits the model parameters to the dataset.
+           Only one epoch.
 
         Args:
             dataset: Instance of dataset class (see ../dataset/dataset.py)
-              
+            batch_size: Number of samples per batch.
+            testset: Data on which to evaluate the model.
+            test_period: Defines period after which the model is evaluated,
+                         if testset is not None.
+                         
         Returns:
             Metrics like average loss, accuracy, etc..
         """
         raise NotImplementedError("Method not implemented.")
-      
+        
       
     def validate(self, dataset):
         """Validates the model on the provided dataset.
@@ -27,6 +32,17 @@ class AbstractModel(object):
         """
         raise NotImplementedError("Method not implemented.")
   
+    def predict(self, datapoint):
+        """Runs the model on the datapoint and produces the reconstruction.
+        
+        Args:
+            datapoint: Datapoint that is used as input to the model.
+            
+        Returns:
+            The recontructed datapoint.
+        """
+        raise NotImplementedError("Method not implemented.")
+
 
     def compress(self, datapoint):
         """First converts the given datapoint to it's latent representation,

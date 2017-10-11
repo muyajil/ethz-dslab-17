@@ -41,23 +41,107 @@ class Config(object):
     
 class ConvAutoenoder(AbstractModel):
     
-    def train(self, dataset, testset=None):
-        """Fits the model parameters to the dataset.
 
+    def train_epoch(self, dataset, batch_size, testset=None, test_period=1):
+        """Fits the model parameters to the dataset.
+           Only one epoch.
         Args:
-            dataset: Instance of dataset class (see ../dataset/dataset.py)
-            testset: Data on which to evaluate the loss at the end of each epoch.
+            dataset: Instance of Dataset class (see ../dataset/dataset.py)
+            batch_size: Number of samples per batch.
+            testset: Data on which to evaluate the model.
+            test_period: Defines period after which the model is evaluated,
+                         if testset is not None. 0 means never.
               
         Returns:
             Metrics like average loss, accuracy, etc..
         """
-        self.autoencoder.compile(optimizer='adadelta', loss='mean_squared_error')
-        self.autoencoder.fit(dataset, dataset, epochs=self.config.epochs,
-            batch_size=self.config.batch_size, shuffle=False,
-            validation_data=None, verbose=1)
-        # TODO    callbacks=[TensorBoard(log_dir='/tmp/autoencoder')])
+        step = 0
+        for batch in dataset.batch_iter(batch_size):
+            step =+ 1
+            statistics_train = self.autoencoder.train_on_batch(batch, batch)
+            
+            # Evaluate model on testset after some steps
+            if testset is not None and step%test_period==0:
+                test_loss = self.validate(testset, batch_size)
+                
+        return "TODO"
+        
+        
+    def validate(self, testset, batch_size):
+        """Validates the model on the provided dataset.
+        
+        Args:
+            testset: Instance of dataset class
+            
+        Returns:
+            average batch-loss
+        """
+        avg_loss = 0.0
+        n_batches = 0
+        for batch in testset.batch_iter(batch_size):
+            loss = self.autoencoder.test_on_batch(batch, batch)
+            n_batches += 1
+            avg_loss += loss
+        avg_loss /= float(n_batches)
+        return avg_loss
+        
+  
+    def predict(self, datapoint):
+        """Runs the model on the datapoint and produces the reconstruction.
+        
+        Args:
+            datapoint: Datapoint that is used as input to the model.
+            
+        Returns:
+            The recontructed datapoint.
+        """
+        return self.autoencoder(datapoint)
 
-    
+
+    def _keras_generator(self, dataset, batch_size):
+        """Converts a dataset object to a generator that suites the Keras interface,
+           i.e., indefinitely loops over the dataset.
+        
+        Args:
+            dataset: Instance of Dataset class (see ../dataset/dataset.py)
+            batch_size: Number of samples per batch.
+
+
+        Returns:
+            A generator that yiels (inputs, targets) tuples according to Keras.
+            Note that inputs = targets here.
+        """
+        while 1:
+            for batch in dataset.batch_iter(batch_size):
+                yield (batch, batch)
+                
+                
+    def train_n_epochs_with_generator(self, dataset, batch_size, n_epochs=1, testset=None):
+        """Fits the model parameters to the dataset by using a generator.
+           Runs for multiple epochs.
+
+        Args:
+            dataset: Instance of Dataset class (see ../dataset/dataset.py) 
+            batch_size: Number of samples per batch.
+            n_epochs: Number of times to train on the whole dataset.
+            testset: Dataset on which to evaluate the model.
+              
+        Returns:
+            Metrics like average loss, accuracy, etc..
+        """
+        batches_per_epoch = dataset.get_size() / batch_size
+        train_generator = self._keras_generator(dataset, batch_size)
+        test_generator = self._keras_generator(testset, batch_size) if testset is not None else None
+        test_n_batches = testset.get_size() / batch_size if testset is not None else None
+        
+        return self.autoencoder.fit_generator(
+                    train_generator,
+                    batches_per_epoch,
+                    epochs=n_epochs,
+                    validation_data=test_generator,
+                    validation_steps=test_n_batches)
+        
+        
     def _new_model(self, config):
         """Creates a new convolutional autoencoder model.
       
@@ -100,6 +184,8 @@ class ConvAutoenoder(AbstractModel):
                 activation='sigmoid')(u1)
                 
         self.autoencoder = Model(input_img, decoded)
+        self.autoencoder.compile(optimizer='adadelta', loss='mean_squared_error')
+
                 
         if self.debug:
             print("shape of input_img", K.int_shape(input_img))
@@ -109,7 +195,7 @@ class ConvAutoenoder(AbstractModel):
             print("shape of u1", K.int_shape(u1))
             print("shape of decoed", K.int_shape(decoded))
 
-
+model = ConvAutoenoder(Config())
         
 if __name__ == '__main__':
     c = Config()
