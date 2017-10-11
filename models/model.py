@@ -2,7 +2,7 @@ class AbstractConfig(object):
 
     # Image dimensions
     img_channels = None
-    img_widht = None
+    img_width = None
     img_height = None
 
 class AbstractModel(object):
@@ -11,7 +11,7 @@ class AbstractModel(object):
     Each model needs to derive from this class.
     """
   
-    def train_epoch(self, dataset, batch_size, testset=None, test_period=None):
+    def train_epoch(self, dataset, batch_size, image_dim, testset=None, test_period=None):
         """Fits the model parameters to the dataset.
            Only one epoch.
 
@@ -23,12 +23,11 @@ class AbstractModel(object):
                          if testset is not None.
                          
         Returns:
-            Metrics like average loss, accuracy, etc..
+            Nothing
         """
         raise NotImplementedError("Method not implemented.")
 
-
-    def validate(self, dataset, batch_size):
+    def validate(self, dataset, batch_size, image_dim):
         """Validates the model on the provided dataset.
         
         Args:
@@ -38,8 +37,7 @@ class AbstractModel(object):
             Some score to measure the performance of the model.
         """
         raise NotImplementedError("Method not implemented.")
-  
-  
+
     def predict(self, datapoint):
         """Runs the model on the datapoint and produces the reconstruction.
         
@@ -51,6 +49,8 @@ class AbstractModel(object):
         """
         raise NotImplementedError("Method not implemented.")
 
+    def predict_batch(self, batch):
+        raise NotImplementedError()
 
     def compress(self, datapoint):
         """First converts the given datapoint to it's latent representation,
@@ -106,12 +106,14 @@ class AbstractModel(object):
             restore: Path to a stored model state.
                      If None, a new model will be created.
         """
-        self.config.img_channels, self.config.img_widht, self.config.img_height = input_dimensions
+        self.config.img_height, self.config.img_width, self.config.img_channels = input_dimensions
         if restore is None:
             self._new_model(self.config)
         else:
             self._restore_model(restore)
 
+    def save_model(self):
+        raise NotImplementedError()
   
     def __init__(self, config, debug=False):
         """Initialization of the model.

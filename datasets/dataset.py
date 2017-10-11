@@ -1,4 +1,5 @@
 import random as rand
+import numpy as np
 
 
 class Dataset(object):
@@ -63,8 +64,24 @@ class Dataset(object):
         
         self._current_batch = 0
         rand.shuffle(self._indices)
+
+    def _crop_image(self, image, image_dim):
+        if image.shape == image_dim:
+            return image
+
+        try:
+            height, width, chan = image.shape
+        except ValueError:
+            raise ValueError("The image had no channels")
+
+        if height < image_dim[0] or width < image_dim[1]:
+            raise ValueError("The image is too small")
+
+        heightoff = (height - image_dim[0]) // 2
+        widthoff = (width - image_dim[1]) // 2
+        return image[heightoff:-heightoff, widthoff:-widthoff, :]
         
-    def _load_function(self, file_id):
+    def _load_function(self, file_id, image_dim):
         """Load a file into a tensor
         
         Args:
@@ -116,7 +133,7 @@ class Dataset(object):
             Which augmented version of the datapoint to choose.
         """
         
-        return (batch_id / data_point_id) - 1
+        return int((batch_id / data_point_id)) - 1
         
     def _pad_batch(self, batch, batch_size):
         """Pad a batch
@@ -133,7 +150,7 @@ class Dataset(object):
         for i in range(diff):
             batch.append(batch[i % len(batch)])
 
-    def batch_iter(self, batch_size):
+    def batch_iter(self, batch_size, image_dim):
         """Returns the next batch of the dataset
         
         Args:
@@ -145,8 +162,8 @@ class Dataset(object):
         """
         
         while True:
-            lower = min(self._current_batch*batch_size, len(self._indices))
-            upper = min((self._current_batch+1)*batch_size, len(self._indices))
+            lower = min(self._current_batch*batch_size, len(self._indices)-1)
+            upper = len(self._indices)-1
             
             if lower == upper:
                 self._reset_batches()
@@ -160,20 +177,24 @@ class Dataset(object):
                 
                 data_point_version = self._get_data_point_version(batch_id, 
                                                                   data_point_id)
-                                               
-                data_point = self._load_function(data_point_id)
+                try:
+                    data_point = self._load_function(data_point_id, image_dim)
+                except ValueError:
+                    continue
                 
                 processed_data_point = [data_point]
                 
                 for fun in self._preprocess_pipeline():
                     processed_data_point = map(fun, processed_data_point)
                 batch.append(processed_data_point[data_point_version])
+                if len(batch) == batch_size:
+                    break
             
             if len(batch) < batch_size:
                 self._pad_batch(batch, batch_size)
             
             self._current_batch = self._current_batch + 1
-            yield batch
+            yield np.stack(batch)
         
     def split(self, split_ratio):
         """Splits the Dataset into Test and Train 
@@ -191,6 +212,9 @@ class Dataset(object):
         
         indices_test = self._indices[num_datapoints_train:]
 
+        print("Number of datapoints in training set: " + str(len(indices_train)))
+        print("Number of datapoints in test set: " + str(len(indices_test)))
+
         return (type(self)(self._augmentation_multiplicator, indices_train),
                 type(self)(self._augmentation_multiplicator, indices_test))
 
@@ -202,7 +226,8 @@ class Dataset(object):
 
     def get_data_dimension(self):
         datapoint = self._load_function(1)
-        return datapoint.shape()
+        print("Shape of datapoints: " + str(datapoint.shape))
+        return datapoint.shape
 
     def keras_generator(self, batch_size):
         """Wraps the batch_iter method to match the keras interace.

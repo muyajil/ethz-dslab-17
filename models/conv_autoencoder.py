@@ -31,11 +31,11 @@ class Config(AbstractConfig):
     d2_channels = 3
     d2_size = 7, 7
     d2_strides = 1, 1
-    
-class ConvAutoenoder(AbstractModel):
-    
 
-    def train_epoch(self, dataset, batch_size, testset=None, test_period=1):
+
+class ConvAutoenoder(AbstractModel):
+
+    def train_epoch(self, dataset, batch_size, image_dim, testset=None, test_period=1):
         """Fits the model parameters to the dataset.
            Only one epoch.
         Args:
@@ -46,21 +46,20 @@ class ConvAutoenoder(AbstractModel):
                          if testset is not None. 0 means never.
               
         Returns:
-            Metrics like average loss, accuracy, etc..
+            Nothing
         """
         step = 0
-        for batch in dataset.batch_iter(batch_size):
-            step = step +  1
+        for batch in dataset.batch_iter(batch_size, image_dim):
+            step = step + 1
             statistics_train = self.autoencoder.train_on_batch(batch, batch)
+            print("Train error batch " + str(step) + " : " + str(statistics_train))
             
             # Evaluate model on testset after some steps
-            if testset is not None and step%test_period==0:
-                test_loss = self.validate(testset, batch_size)
-                
-        return "TODO"
-   
+            if testset is not None and step % test_period == 0:
+                test_loss = self.validate(testset, batch_size, image_dim)
+                print("Test Loss: " + str(test_loss))
 
-    def validate(self, testset, batch_size):
+    def validate(self, testset, batch_size, image_dim):
         """Validates the model on the provided dataset.
         
         Args:
@@ -71,25 +70,26 @@ class ConvAutoenoder(AbstractModel):
         """
         avg_loss = 0.0
         n_batches = 0
-        for batch in testset.batch_iter(batch_size):
+        for batch in testset.batch_iter(batch_size, image_dim):
             loss = self.autoencoder.test_on_batch(batch, batch)
             n_batches += 1
             avg_loss += loss
         avg_loss /= float(n_batches)
         return avg_loss
- 
-  
+
     def predict(self, datapoint):
         """Runs the model on the datapoint and produces the reconstruction.
-        
+
         Args:
             datapoint: Datapoint that is used as input to the model.
-            
+
         Returns:
             The recontructed datapoint.
         """
         return self.autoencoder(datapoint)
 
+    def predict_batch(self, batch):
+        return self.autoencoder.predict_on_batch(batch)
 
     def train_n_epochs_with_generator(self, dataset, batch_size, n_epochs=1, testset=None):
         """Fits the model parameters to the dataset by using a generator.
@@ -115,16 +115,21 @@ class ConvAutoenoder(AbstractModel):
                     epochs=n_epochs,
                     validation_data=test_generator,
                     validation_steps=test_n_batches)
-        
-    
+
+    def save_model(self, epoch=None):
+        if epoch is None:
+            self.autoencoder.save('ConvAutoEncoder.h5')
+        else:
+            self.autoencoder.save('ConvAutoEncoder' + str(epoch) + '.h5')
+
     def _new_model(self, config):
         """Creates a new convolutional autoencoder model.
       
         Args:
             config: Model parameters.
         """
-        input_img = Input(shape=(config.img_widht,
-                                 config.img_height,
+        input_img = Input(shape=(config.img_height,
+                                 config.img_width,
                                  config.img_channels))
 
         c1 = Conv2D(
@@ -157,7 +162,6 @@ class ConvAutoenoder(AbstractModel):
         self.autoencoder = Model(input_img, decoded)
         self.autoencoder.compile(optimizer='adadelta', loss='mean_squared_error')
 
-                
         if self.debug:
             print("shape of input_img", K.int_shape(input_img))
             print("shape of c1", K.int_shape(c1))
@@ -165,6 +169,7 @@ class ConvAutoenoder(AbstractModel):
             print("shape of d1", K.int_shape(d1))
             print("shape of u1", K.int_shape(u1))
             print("shape of decoed", K.int_shape(decoded))
+
 
 model = ConvAutoenoder(Config())
         
