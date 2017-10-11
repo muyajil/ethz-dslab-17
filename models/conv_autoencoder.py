@@ -98,24 +98,6 @@ class ConvAutoenoder(AbstractModel):
         return self.autoencoder(datapoint)
 
 
-    def _keras_generator(self, dataset, batch_size):
-        """Converts a dataset object to a generator that suites the Keras interface,
-           i.e., indefinitely loops over the dataset.
-        
-        Args:
-            dataset: Instance of Dataset class (see ../dataset/dataset.py)
-            batch_size: Number of samples per batch.
-
-
-        Returns:
-            A generator that yiels (inputs, targets) tuples according to Keras.
-            Note that inputs = targets here.
-        """
-        while 1:
-            for batch in dataset.batch_iter(batch_size):
-                yield (batch, batch)
-                
-                
     def train_n_epochs_with_generator(self, dataset, batch_size, n_epochs=1, testset=None):
         """Fits the model parameters to the dataset by using a generator.
            Runs for multiple epochs.
@@ -130,8 +112,8 @@ class ConvAutoenoder(AbstractModel):
             Metrics like average loss, accuracy, etc..
         """
         batches_per_epoch = dataset.get_size() / batch_size
-        train_generator = self._keras_generator(dataset, batch_size)
-        test_generator = self._keras_generator(testset, batch_size) if testset is not None else None
+        train_generator = dataset.keras_generator(batch_size)
+        test_generator = testset.keras_generator(batch_size) if testset is not None else None
         test_n_batches = testset.get_size() / batch_size if testset is not None else None
         
         return self.autoencoder.fit_generator(

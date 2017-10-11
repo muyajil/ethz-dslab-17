@@ -193,3 +193,25 @@ class Dataset(object):
         
         return (Dataset(self._augmentation_multiplicator, indices_train),
                 Dataset(self._augmentation_multiplicator, indices_test))
+                
+    def get_size(self):
+        """Returns the number of samples in the dataset.
+        """
+        
+        return len(self._indices)
+        
+        
+    def keras_generator(self, batch_size):
+        """Wraps the batch_iter method to match the keras interace.
+           See Keras method: fit_generator for details.
+        
+        Args:
+            batch_size: Number of samples per batch.
+
+        Returns:
+            A generator that yiels (inputs, targets) tuples according to Keras.
+            Note that inputs = targets here.
+        """
+        while 1:
+            for batch in self.batch_iter(batch_size):
+                yield (batch, batch)
