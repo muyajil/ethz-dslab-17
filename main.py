@@ -23,9 +23,10 @@ def run_model(run_mode, batch_size, epochs, split_ratio, image_dim):
     if run_mode == "test":
         train_set, test_set = dataset.split(split_ratio)
         for i in range(epochs):
-            statistics = model.train_epoch(train_set, batch_size, image_dim, testset=test_set, test_period=50)
+            statistics = model.train_epoch(train_set, batch_size, image_dim, testset=test_set, test_period=200)
             print(statistics)
             model.save_model(epoch=i)
+            print("Epoch " + str(i) + " finished.")
         model.save_model()
         predict_test_set(model, test_set, batch_size)
     

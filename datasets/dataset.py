@@ -147,6 +147,7 @@ class Dataset(object):
         """
         
         diff = batch_size - len(batch)
+        # TODO: Sometimes the batch is empty this should not happen at this point
         for i in range(diff):
             batch.append(batch[i % len(batch)])
 
@@ -181,7 +182,10 @@ class Dataset(object):
                     data_point = self._load_function(data_point_id, image_dim)
                 except ValueError:
                     continue
-                
+                # TODO: Sometimes datapoint is empty
+                if data_point.shape != image_dim:
+                    continue
+
                 processed_data_point = [data_point]
                 
                 for fun in self._preprocess_pipeline():
@@ -196,11 +200,11 @@ class Dataset(object):
             self._current_batch = self._current_batch + 1
             try:
                 result = np.stack(batch)
+                yield result
             except ValueError:
                 sizes = list(map(lambda x: x.shape, batch))
                 print(sizes)
                 print(batch)
-            yield result
         
     def split(self, split_ratio):
         """Splits the Dataset into Test and Train 
