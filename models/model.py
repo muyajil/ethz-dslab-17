@@ -1,126 +1,140 @@
-class AbstractConfig(object):
+import keras
 
-    # Image dimensions
-    img_channels = None
-    img_width = None
-    img_height = None
 
-class AbstractModel(object):
+class ModelConfig(object):
+    """Configuration for AbstractEncoderDecoder
+    """
+
+    batch_size = None
+    input_dimensions = None
+    checkpoints_path = None
+
+    def __init__(self, batch_size, input_dimensions, checkpoints_path=None):
+        self.batch_size = batch_size
+        self.input_dimensions = input_dimensions
+        self.checkpoints_path = checkpoints_path
+
+
+class AbstractEncoderDecoder(object):
     """Abstract model class
   
     Each model needs to derive from this class.
     """
-  
-    def train_epoch(self, dataset, batch_size, image_dim, testset=None, test_period=None):
+
+    _config = None
+    _model = None
+
+    def get_callbacks(self):
+        callbacks = []
+        callbacks.append(
+            keras.callbacks.TensorBoard(log_dir='./logs', histogram_freq=1, batch_size=self._config.batch_size,
+                                        write_graph=True, write_grads=True, write_images=True, embeddings_freq=1,
+                                        embeddings_layer_names=None, embeddings_metadata=None))
+
+        if self._config.checkpoints_path is not None:
+            callbacks.append(keras.callbacks.ModelCheckpoint(self._config.checkpoints_path, monitor='val_loss',
+                                                             verbose=0, save_best_only=False, save_weights_only=False,
+                                                             mode='auto', period=1))
+
+        return callbacks
+
+    def train(self, training_set, epochs, validation_set=None):
         """Fits the model parameters to the dataset.
            Only one epoch.
 
         Args:
-            dataset: Instance of dataset class (see ../dataset/dataset.py)
-            batch_size: Number of samples per batch.
-            testset: Data on which to evaluate the model.
+            training_set: Instance of AbstractDataset
+            epochs: Number of epochs to train
+            validation_set: Data on which to evaluate the model.
             test_period: Defines period after which the model is evaluated,
                          if testset is not None.
                          
         Returns:
             Nothing
         """
-        raise NotImplementedError("Method not implemented.")
+        steps_per_epoch = training_set.get_size() / self._config.batch_size
 
-    def validate(self, dataset, batch_size, image_dim):
+        return self._model.fit_generator(training_set.batch_iter(),
+                                         steps_per_epoch,
+                                         epochs,
+                                         validation_data=validation_set.batch_iter() if validation_set is not None else None,
+                                         validation_steps=validation_set.get_size() if validation_set is not None else None,
+                                         shuffle=False,
+                                         callbacks=self.get_callbacks())
+
+    def validate(self, validation_set):
         """Validates the model on the provided dataset.
         
         Args:
-            dataset: Instance of dataset class
+            validation_set: Instance of AbstractDataset class
             
         Returns:
             Some score to measure the performance of the model.
         """
-        raise NotImplementedError("Method not implemented.")
-
-    def predict(self, datapoint):
-        """Runs the model on the datapoint and produces the reconstruction.
-        
-        Args:
-            datapoint: Datapoint that is used as input to the model.
-            
-        Returns:
-            The recontructed datapoint.
-        """
-        raise NotImplementedError("Method not implemented.")
+        return self._model.evaluate_generator(validation_set.batch_iter(self._config.batch_size),
+                                              validation_set.get_size())
 
     def predict_batch(self, batch):
-        raise NotImplementedError()
+        """Returns a encoded then decoded datapoint
 
-    def compress(self, datapoint):
-        """First converts the given datapoint to it's latent representation,
-           and then to a transmittable form (e.g., to binary).
+        Args:
+
+            batch: A numpy array of datapoints
+        """
+        return self._model.predict_on_batch(batch)
+
+    def encode(self, datapoint):
+        """Encode datapoint
          
         Args:
-            datapoint: Datapoint that is compressed.
+            datapoint: Datapoint.
             
         Returns:
-            The encoding of the datapoint in a transmittable form.
+            Encoded Datapoint.
         """
         raise NotImplementedError("Method not implemented.")
 
-   
-    def decompress(self, compressed_datapoint):
-        """First decodes compressed_datapoint to the latent space
-        representation, and then to the reconstructed datapoint.
+    def decode(self, encoded_datapoint):
+        """Decodes a datapoint
             
         Args:
-            compressed_datapoint: Is to be decoded and decompressed.
+            encoded_datapoint: Is to be decoded.
             
         Returns:
-            The reconstructed datapoint.
+            The decoded datapoint.
         """
         raise NotImplementedError("Method not implemented.")
 
-
-    def _new_model(self, config):
+    def _new_model(self):
         """Creates a new model.
-      
-        Args:
-            config: Parameters that are model-specific.
+
+        Returns:
+            An instance of the model
         """
         raise NotImplementedError("Method not implemented.")
 
-    
-    def _restore_model(self, path):
-        """Restore a stored model.
-      
-        Args:
-            path: Path to the stored model state.
+    def _debug(self):
+        """Debug the model
         """
-        raise NotImplementedError("Method not implemented.")
+        pass
 
-
-    def set_up_model(self, input_dimensions, restore=None):
+    def initialize(self, config=None, restore_path=None, debug=False):
         """Sets up the model. This method MUST be called before anything else.
            It is like a constructor.
            TODO: This is nasty but I found no other way that works with the main.py
            
         Args:
-            input_dimensions: Dimensions of the data points.
-            restore: Path to a stored model state.
+            config: Hyperparameters of the model
+            debug:  Debug mode.
+            restore_path: Path to a stored model state.
                      If None, a new model will be created.
         """
-        self.config.img_height, self.config.img_width, self.config.img_channels = input_dimensions
-        if restore is None:
-            self._new_model(self.config)
-        else:
-            self._restore_model(restore)
+        if debug:
+            self._debug()
 
-    def save_model(self):
-        raise NotImplementedError()
-  
-    def __init__(self, config, debug=False):
-        """Initialization of the model.
-      
-        Args:
-            config: Parameters that are model-specific.
-            debug:  Debug mode.
-        """
-        self.debug = debug
-        self.config = config
+        self._config = config
+        if restore_path is None:
+            self._model = self._new_model()
+        else:
+            self._model = keras.models.load_model(restore_path)
+

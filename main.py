@@ -1,38 +1,26 @@
 import argparse
+import os
 from pydoc import locate
-from scipy.misc import imsave
+from models.model import ModelConfig
 
 model = None
 dataset = None
 
-def predict_test_set(model, test_set, batch_size):
-    image_index = 0
-    for batch in test_set.batch_iter(batch_size):
-        predicted = model.predict_batch(batch)
-        for image in predicted:
-            imsave('image_' + str(test_set._indices[image_index]) + '.jpg', image)
 
-def run_model(run_mode, batch_size, epochs, split_ratio, image_dim):
+def run_model(run_mode, epochs, split_ratio, batch_size):
     """Runs a model based on command line arguments
     """
     if run_mode == "debug":
-        batch_iterator = dataset.batch_iter(batch_size, image_dim)
-        for i in range(2):
-            batch = next(batch_iterator)
+        debug_dataset = dataset.get_debug_dataset(batch_size)
+        debug_training, debug_validation = debug_dataset.split(0.66)
+        model.train(debug_training, epochs=2, validation_set=debug_validation)
     
     if run_mode == "test":
-        train_set, test_set = dataset.split(split_ratio)
-        for i in range(epochs):
-            statistics = model.train_epoch(train_set, batch_size, image_dim, testset=test_set, test_period=200)
-            print(statistics)
-            model.save_model(epoch=i)
-            print("Epoch " + str(i) + " finished.")
-        model.save_model()
-        predict_test_set(model, test_set, batch_size)
+        training_set, validation_set = dataset.split(split_ratio)
+        model.train(training_set, epochs, validation_set=validation_set)
     
     if run_mode == "prod":
-        for i in range(epochs):
-            statistics = model.train_epoch(dataset, batch_size)
+        model.train(dataset, epochs)
 
 
 if __name__ == "__main__":
@@ -61,13 +49,17 @@ if __name__ == "__main__":
 
     print(args)
 
-    image_dim = (args.img_height, args.img_width, args.img_channels)
+    input_dimensions = (args.img_height, args.img_width, args.img_channels)
 
     dataset_module = locate("datasets." + args.dataset_name)
     dataset = getattr(dataset_module, "dataset")
+    dataset_config = getattr(dataset_module, "config")
+    dataset.initialize(dataset_config)
 
     model_module = locate("models." + args.model_name)
     model = getattr(model_module, "model")
+    os.mkdir(os.path.join("checkpoints", args.model_name))
+    model_config = ModelConfig(args.batch_size, input_dimensions, "./checkpoints/" + args.model_name)
+    model.initialize(model_config)
 
-    model.set_up_model(image_dim)
-    run_model(args.run_mode, args.batch_size, args.epochs, args.split_ratio, image_dim)
+    run_model(args.run_mode, args.epochs, args.split_ratio, args.batch_size)
