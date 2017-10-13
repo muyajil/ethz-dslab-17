@@ -46,8 +46,6 @@ class AbstractEncoderDecoder(object):
             training_set: Instance of AbstractDataset
             epochs: Number of epochs to train
             validation_set: Data on which to evaluate the model.
-            test_period: Defines period after which the model is evaluated,
-                         if testset is not None.
                          
         Returns:
             Nothing
@@ -78,7 +76,6 @@ class AbstractEncoderDecoder(object):
         """Returns a encoded then decoded datapoint
 
         Args:
-
             batch: A numpy array of datapoints
         """
         return self._model.predict_on_batch(batch)
