@@ -1,10 +1,10 @@
-from datasets.dataset import Dataset
+from datasets.abstractdataset import AbstractDataset
 from downloaders.mars_rover import MarsRoverDownloader
 import os
 from scipy.ndimage import imread
 
 
-class MarsRoverMahli(Dataset):
+class MarsRoverMahli(AbstractDataset):
 
     def _download_data(self):
         downloader = MarsRoverDownloader("mahli")

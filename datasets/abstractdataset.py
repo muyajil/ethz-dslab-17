@@ -8,16 +8,18 @@ class DatasetConfig(object):
     file_ending = None
     augmentation_multiplicator = None
     num_datapoints = None
+    image_dim = None
 
-    def __init__(self, base_path, base_name, file_ending, augmentation_multiplicator, num_datapoints):
+    def __init__(self, base_path, base_name, file_ending, augmentation_multiplicator, num_datapoints, image_dim):
         self.base_path = base_path
         self.base_name = base_name
         self.file_ending = file_ending
         self.augmentation_multiplicator = augmentation_multiplicator
         self.num_datapoints = num_datapoints
+        self.image_dim = image_dim
 
 
-class Dataset(object):
+class AbstractDataset(object):
     """Class representing a dataset
     
     Usage:
@@ -42,7 +44,7 @@ class Dataset(object):
         self._current_batch = 0
         rand.shuffle(self._indices)
         
-    def _load_function(self, file_id, image_dim):
+    def _load_function(self, file_id):
         """Load a file into a tensor
         
         Args:
@@ -61,6 +63,14 @@ class Dataset(object):
             List of functions that will be applied in the order of the list.
         """
         raise NotImplementedError()
+
+    def _crop_image(self, image):
+        y, x, z = image.shape
+        cropx = self._config.image_dim[0]
+        cropy = self._config.image_dim[1]
+        startx = x // 2 - (cropx // 2)
+        starty = y // 2 - (cropy // 2)
+        return image[starty:starty + cropy, startx:startx + cropx]
 
     def get_debug_dataset(self, batch_size):
         """Generates a dataset for debugging
@@ -108,7 +118,7 @@ class Dataset(object):
             Which augmented version of the datapoint to choose.
         """
         
-        return int((batch_id -1 )/ self._config.num_datapoints)
+        return int((batch_id - 1) / self._config.num_datapoints)
         
     def _pad_batch(self, batch, batch_size):
         """Pad a batch
@@ -155,7 +165,8 @@ class Dataset(object):
                 processed_data_point = [data_point]
                 for fun in self._preprocess_pipeline():
                     processed_data_point = map(fun, processed_data_point)
-                batch.append(processed_data_point[data_point_version])
+                cropped_data_point = self._crop_image(processed_data_point[data_point_version])
+                batch.append(cropped_data_point)
             
             if len(batch) < batch_size:
                 self._pad_batch(batch, batch_size)
@@ -212,13 +223,13 @@ class Dataset(object):
                 indices: The indices of datapoints in this dataset
 
             Returns:
-                Dataset
+                AbstractDataset
         """
         self._config = config
 
         if indices is None:
             self._indices = \
-                list(range(1, self._config.augmentation_multiplicator * self._config.num_datapoints + 1))
+                list(range(self._config.augmentation_multiplicator * self._config.num_datapoints))
             rand.shuffle(self._indices)
         else:
             self._indices = indices
