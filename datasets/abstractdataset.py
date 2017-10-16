@@ -1,5 +1,7 @@
 import random as rand
 import numpy as np
+import os
+import copy
 
 
 class DatasetConfig(object):
@@ -8,15 +10,19 @@ class DatasetConfig(object):
     file_ending = None
     augmentation_multiplicator = None
     num_datapoints = None
-    image_dim = None
+    input_dimensions = None
+    batch_size = None
 
-    def __init__(self, base_path, base_name, file_ending, augmentation_multiplicator, num_datapoints, image_dim):
-        self.base_path = base_path
+    def __init__(self, base_name, file_ending, augmentation_multiplicator):
         self.base_name = base_name
         self.file_ending = file_ending
         self.augmentation_multiplicator = augmentation_multiplicator
-        self.num_datapoints = num_datapoints
-        self.image_dim = image_dim
+
+    def initialize(self, base_path, input_dimensions, batch_size):
+        self.base_path = base_path
+        self.batch_size = batch_size
+        self.input_dimensions = input_dimensions
+        self.num_datapoints = len(os.listdir(self.base_path))
 
 
 class AbstractDataset(object):
@@ -34,7 +40,6 @@ class AbstractDataset(object):
     _indices = None
     _current_batch = 0
     _current_epoch = 1
-    _num_datapoints = None
     _config = None
 
     def _reset_batches(self):
@@ -64,26 +69,27 @@ class AbstractDataset(object):
         """
         raise NotImplementedError()
 
-    def _crop_image(self, image):
-        y, x, z = image.shape
-        cropx = self._config.image_dim[0]
-        cropy = self._config.image_dim[1]
-        startx = x // 2 - (cropx // 2)
-        starty = y // 2 - (cropy // 2)
-        return image[starty:starty + cropy, startx:startx + cropx]
+    def _crop_input(self, datapoint):
+        """This function crops the possibly variable data dimensions to the one specified in the config
+        This function is always called after preprocessing a datapoint.
 
-    def get_debug_dataset(self, batch_size):
+        Args:
+            datapoint: A datapoint from the dataset
+
+        Returns:
+            A cropped version of datapoint that fits into the input of the model that initialized this class.
+        """
+        raise NotImplementedError()
+
+    def get_debug_dataset(self):
         """Generates a dataset for debugging
 
-            Args:
-                batch_size
-
             Returns:
-                A debug dataset
+                A Dataset for Debugging
         """
 
-        debug_datapoints = batch_size*3 + 1
-        debug_config = self._config
+        debug_datapoints = self._config.batch_size*3 + 1
+        debug_config = copy.deepcopy(self._config)
         debug_config.num_datapoints = debug_datapoints
         debug_indices = self._indices[:debug_datapoints]
         debug_dataset = type(self)()
@@ -102,9 +108,9 @@ class AbstractDataset(object):
             Datapoint ID
         """
         
-        data_point_id = batch_id % self._num_datapoints
+        data_point_id = batch_id % self._config.num_datapoints
         if data_point_id == 0:
-            return self._num_datapoints
+            return self._config.num_datapoints
         else:
             return data_point_id
 
@@ -117,38 +123,34 @@ class AbstractDataset(object):
         Returns:
             Which augmented version of the datapoint to choose.
         """
+        num_files = len(os.listdir(self._config.base_path))
+        return int(batch_id / num_files)
         
-        return int((batch_id - 1) / self._config.num_datapoints)
-        
-    def _pad_batch(self, batch, batch_size):
+    def _pad_batch(self, batch):
         """Pad a batch
         
         Args:
-            batch_size: Batch size
             batch: A batch that is smaller than batch_size
         
         Returns:
             A batch that is padded to batch_size
         """
         
-        diff = batch_size - len(batch)
+        diff = self._config.batch_size - len(batch)
         for i in range(diff):
             batch.append(batch[i % len(batch)])
 
-    def batch_iter(self, batch_size):
+    def batch_iter(self):
         """Returns the next batch of the dataset
-        
-        Args:
-            batch_size: Size of batch
-            
+
         Returns:
             The next batch of data in a form that is ready to be consumed by 
             the model
         """
         
         while True:
-            lower = min(self._current_batch*batch_size, len(self._indices)-1)
-            upper = min((self._current_batch+1)*batch_size, len(self._indices)-1)
+            lower = min(self._current_batch*self._config.batch_size, len(self._indices)-1)
+            upper = min((self._current_batch+1)*self._config.batch_size, len(self._indices)-1)
             
             if lower == upper:
                 self._reset_batches()
@@ -165,11 +167,11 @@ class AbstractDataset(object):
                 processed_data_point = [data_point]
                 for fun in self._preprocess_pipeline():
                     processed_data_point = map(fun, processed_data_point)
-                cropped_data_point = self._crop_image(processed_data_point[data_point_version])
+                cropped_data_point = self._crop_input(processed_data_point[data_point_version])
                 batch.append(cropped_data_point)
             
-            if len(batch) < batch_size:
-                self._pad_batch(batch, batch_size)
+            if len(batch) < self._config.batch_size:
+                self._pad_batch(batch)
             
             self._current_batch = self._current_batch + 1
 
@@ -189,10 +191,10 @@ class AbstractDataset(object):
         
         num_datapoints_train = int(split_ratio*self._config.num_datapoints)
 
-        training_config = self._config
+        training_config = copy.deepcopy(self._config)
         training_config.num_datapoints = num_datapoints_train
 
-        validation_config = self._config
+        validation_config = copy.deepcopy(self._config)
         validation_config.num_datapoints = self._config.num_datapoints - num_datapoints_train
 
         training_indices = self._indices[:num_datapoints_train]
@@ -203,7 +205,6 @@ class AbstractDataset(object):
 
         training_set = type(self)()
         validation_set = type(self)()
-
         training_set.initialize(training_config, training_indices)
         validation_set.initialize(validation_config, validation_indices)
 

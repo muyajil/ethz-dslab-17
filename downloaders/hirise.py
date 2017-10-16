@@ -5,7 +5,6 @@ This module downloads as much files as possible from HiRISE
 import argparse
 import httplib2
 from bs4 import BeautifulSoup
-import sys
 import urllib.request
 import urllib.error
 import os

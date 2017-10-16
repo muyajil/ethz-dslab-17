@@ -2,16 +2,17 @@ import argparse
 import os
 from pydoc import locate
 from models.model import ModelConfig
+from utils import Dimension
 
 model = None
 dataset = None
 
 
-def run_model(run_mode, epochs, split_ratio, batch_size):
+def run_model(run_mode, epochs, split_ratio):
     """Runs a model based on command line arguments
     """
     if run_mode == "debug":
-        debug_dataset = dataset.get_debug_dataset(batch_size)
+        debug_dataset = dataset.get_debug_dataset()
         debug_training, debug_validation = debug_dataset.split(0.66)
         model.train(debug_training, epochs=2, validation_set=debug_validation)
     
@@ -44,22 +45,26 @@ if __name__ == "__main__":
                         help="Width of image")
     parser.add_argument("img_channels", metavar="img_channels", type=int,
                         help="Width of image")
-                    
+    parser.add_argument("base_path", metavar="base_path", type=str,
+                        help="Base path for the dataset")
+
     args = parser.parse_args()
 
     print(args)
 
-    input_dimensions = (args.img_height, args.img_width, args.img_channels)
+    input_dimensions = Dimension(args.img_height, args.img_width, args.img_channels)
 
     dataset_module = locate("datasets." + args.dataset_name)
     dataset = getattr(dataset_module, "dataset")
     dataset_config = getattr(dataset_module, "config")
+    dataset_config.initialize(args.base_path, input_dimensions, args.batch_size)
     dataset.initialize(dataset_config)
 
     model_module = locate("models." + args.model_name)
     model = getattr(model_module, "model")
-    os.mkdir(os.path.join("checkpoints", args.model_name))
+    if not os.path.exists(os.path.join("checkpoints", args.model_name)):
+        os.makedirs(os.path.join("checkpoints", args.model_name))
     model_config = ModelConfig(args.batch_size, input_dimensions, "./checkpoints/" + args.model_name)
     model.initialize(model_config)
 
-    run_model(args.run_mode, args.epochs, args.split_ratio, args.batch_size)
+    run_model(args.run_mode, args.epochs, args.split_ratio)

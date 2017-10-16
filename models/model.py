@@ -31,10 +31,10 @@ class AbstractEncoderDecoder(object):
                                         write_graph=True, write_grads=True, write_images=True, embeddings_freq=1,
                                         embeddings_layer_names=None, embeddings_metadata=None))
 
-        if self._config.checkpoints_path is not None:
-            callbacks.append(keras.callbacks.ModelCheckpoint(self._config.checkpoints_path, monitor='val_loss',
-                                                             verbose=0, save_best_only=False, save_weights_only=False,
-                                                             mode='auto', period=1))
+        #if self._config.checkpoints_path is not None:
+        #    callbacks.append(keras.callbacks.ModelCheckpoint(self._config.checkpoints_path, monitor='val_loss',
+        #                                                     verbose=0, save_best_only=False, save_weights_only=False,
+        #                                                     mode='auto', period=1))
 
         return callbacks
 
@@ -58,7 +58,7 @@ class AbstractEncoderDecoder(object):
                                          validation_data=validation_set.batch_iter() if validation_set is not None else None,
                                          validation_steps=validation_set.get_size() if validation_set is not None else None,
                                          shuffle=False,
-                                         callbacks=self.get_callbacks())
+                                         callbacks=None)  # TODO: self.get_callbacks() is not really working
 
     def validate(self, validation_set):
         """Validates the model on the provided dataset.
@@ -110,28 +110,20 @@ class AbstractEncoderDecoder(object):
         """
         raise NotImplementedError("Method not implemented.")
 
-    def _debug(self):
-        """Debug the model
-        """
-        pass
-
-    def initialize(self, config=None, restore_path=None, debug=False):
+    def initialize(self, config=None, restore_path=None):
         """Sets up the model. This method MUST be called before anything else.
            It is like a constructor.
            TODO: This is nasty but I found no other way that works with the main.py
            
         Args:
             config: Hyperparameters of the model
-            debug:  Debug mode.
             restore_path: Path to a stored model state.
                      If None, a new model will be created.
         """
-        if debug:
-            self._debug()
-
         self._config = config
         if restore_path is None:
             self._model = self._new_model()
+            self._model.summary()
         else:
             self._model = keras.models.load_model(restore_path)
 
