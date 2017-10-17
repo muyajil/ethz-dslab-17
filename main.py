@@ -23,6 +23,8 @@ def run_model(run_mode, epochs, split_ratio):
     if run_mode == "prod":
         model.train(dataset, epochs)
 
+    model.save_model()
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser("Pass the arguments for the model run")
@@ -57,8 +59,7 @@ if __name__ == "__main__":
     dataset_module = locate("datasets." + args.dataset_name)
     dataset = getattr(dataset_module, "dataset")
     dataset_config = getattr(dataset_module, "config")
-    dataset_config.initialize(args.base_path, input_dimensions, args.batch_size)
-    dataset.initialize(dataset_config)
+    dataset.initialize(dataset_config, args.base_path, input_dimensions, args.batch_size)
 
     model_module = locate("models." + args.model_name)
     model = getattr(model_module, "model")

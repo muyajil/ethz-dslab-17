@@ -17,7 +17,10 @@ class ConvAutoenoder(AbstractEncoderDecoder):
     def _new_model(self):
         """Creates a new convolutional autoencoder model.
         """
-        input_dim = (self._config.input_dimensions.height, self._config.input_dimensions.width, self._config.input_dimensions.depth)
+        input_dim = (self._config.input_dimensions.height,
+                     self._config.input_dimensions.width,
+                     self._config.input_dimensions.depth)
+
         input_layer = Input(shape=input_dim)
         conv1 = Conv2D(4, 16, strides=1, padding='same', activation='relu')(input_layer)
 
@@ -40,4 +43,4 @@ model = ConvAutoenoder()
 if __name__ == '__main__':
     config = ModelConfig(64, (1024, 1024, 3))
     model = ConvAutoenoder()
-    model.initialize(config=config, debug=True)
+    model.initialize(config=config)

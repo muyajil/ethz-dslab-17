@@ -93,7 +93,7 @@ class AbstractDataset(object):
         debug_config.num_datapoints = debug_datapoints
         debug_indices = self._indices[:debug_datapoints]
         debug_dataset = type(self)()
-        debug_dataset.initialize(debug_config, debug_indices)
+        debug_dataset.initialize(debug_config, indices=debug_indices)
         return debug_dataset
         
     def _get_data_point_id(self, batch_id):
@@ -155,6 +155,7 @@ class AbstractDataset(object):
             if lower == upper:
                 self._reset_batches()
                 self._current_epoch = self._current_epoch + 1
+                continue
             
             batch_ids = self._indices[lower:upper]
             batch = []
@@ -205,8 +206,8 @@ class AbstractDataset(object):
 
         training_set = type(self)()
         validation_set = type(self)()
-        training_set.initialize(training_config, training_indices)
-        validation_set.initialize(validation_config, validation_indices)
+        training_set.initialize(training_config, indices=training_indices)
+        validation_set.initialize(validation_config, indices=validation_indices)
 
         return training_set, validation_set
 
@@ -216,16 +217,21 @@ class AbstractDataset(object):
         
         return len(self._indices)
 
-    def initialize(self, config, indices=None):
+    def initialize(self, config, base_path=None, input_dimensions=None, batch_size=None, indices=None):
         """Construct Dataset
 
             Args:
                 config: Instance of AbstractDatasetConfig
+                base_path: Path where the datapoints are stored
+                input_dimensions: Instance of utils.Dimension
+                batch_size: Batch size
                 indices: The indices of datapoints in this dataset
 
             Returns:
                 AbstractDataset
         """
+        if base_path is not None:
+            config.initialize(base_path, input_dimensions, batch_size)
         self._config = config
 
         if indices is None:

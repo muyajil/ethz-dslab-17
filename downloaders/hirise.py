@@ -44,11 +44,15 @@ def download_images(image_links, download_location, image_id):
     for image_link in image_links:
         file_name = "image_" + str(image_id) + ".IMG"
         image_id = image_id + 1
+        file_path = os.path.join(download_location, file_name)
         try:
-            urllib.request.urlretrieve(image_link, os.path.join(download_location, file_name))
+            urllib.request.urlretrieve(image_link, file_path)
         except urllib.error.HTTPError:
             time.sleep(180)
             image_id = image_id - 1
+        if os.path.getsize(file_path) < 15000000: # Some images are not big enough, minimum file size is 15mb
+            image_id = image_id - 1
+            os.remove(file_path)
         if image_id % 100 == 0:
             print("Downloaded " + str(image_id) + " images.")
 
