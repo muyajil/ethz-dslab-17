@@ -17,7 +17,7 @@ class ConvAutoenoder(AbstractEncoderDecoder):
     def _new_model(self):
         """Creates a new convolutional autoencoder model.
         """
-        input_dim = (self._config.input_dimensions.height, self._config.input_dimensions.width)
+        input_dim = (self._config.input_dimensions.height, self._config.input_dimensions.width, self._config.input_dimensions.depth)
         input_layer = Input(shape=input_dim)
         # TODO: Now the problem is that we have 2D images, i.e. we have no channels, the model should be adapted. Everything up to here is done, only the layers must be adapted.
         conv1 = Conv2D(4, 16, strides=1, padding='same', activation='relu')(input_layer)
