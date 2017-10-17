@@ -26,15 +26,16 @@ class AbstractEncoderDecoder(object):
 
     def get_callbacks(self):
         callbacks = []
-        callbacks.append(
-            keras.callbacks.TensorBoard(log_dir='./logs', histogram_freq=1, batch_size=self._config.batch_size,
-                                        write_graph=True, write_grads=True, write_images=True, embeddings_freq=1,
-                                        embeddings_layer_names=None, embeddings_metadata=None))
+        callbacks.append( 
+            lambda: keras.callbacks.TensorBoard(log_dir='./logs', histogram_freq=1, batch_size=self._config.batch_size,
+                                                write_graph=True, write_grads=True, write_images=True, embeddings_freq=1,
+                                                embeddings_layer_names=None, embeddings_metadata=None))
 
-        #if self._config.checkpoints_path is not None:
-        #    callbacks.append(keras.callbacks.ModelCheckpoint(self._config.checkpoints_path, monitor='val_loss',
-        #                                                     verbose=0, save_best_only=False, save_weights_only=False,
-        #                                                     mode='auto', period=1))
+        if self._config.checkpoints_path is not None:
+            callbacks.append(
+                lambda: keras.callbacks.ModelCheckpoint(self._config.checkpoints_path, monitor='val_loss',
+                                                        verbose=0, save_best_only=False, save_weights_only=False,
+                                                        mode='auto', period=1))
 
         return callbacks
 
@@ -58,7 +59,7 @@ class AbstractEncoderDecoder(object):
                                          validation_data=validation_set.batch_iter() if validation_set is not None else None,
                                          validation_steps=validation_set.get_size() if validation_set is not None else None,
                                          shuffle=False,
-                                         callbacks=None)  # TODO: self.get_callbacks() is not really working
+                                         callbacks=self.get_callbacks())
 
     def validate(self, validation_set):
         """Validates the model on the provided dataset.
