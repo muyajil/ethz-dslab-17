@@ -58,7 +58,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("download_location", metavar="download_location", type=str, help="Path to download images to")
     parser.add_argument("--num_images", dest="num_images", type=int, help="Number of images to download", default=-1)
-
     args = parser.parse_args()
 
+    os.makedirs(args.download_location)
     gather_links(args.download_location, args.num_images)
