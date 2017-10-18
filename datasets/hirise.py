@@ -10,8 +10,8 @@ class Hirise(AbstractDataset):
     def _preprocess_pipeline(self):
         return []
 
-    def _load_function(self, file_id):
-        file = os.path.join(self._config.base_path, self._config.base_name + str(file_id) + self._config.file_ending)
+    def _load_function(self, file_name):
+        file = os.path.join(self._config.base_path, file_name)
         pdsimage = PDS3Image.open(file)
         height, width = pdsimage.image.shape
         return np.reshape(pdsimage.image, (height, width, 1))
@@ -29,6 +29,6 @@ class Hirise(AbstractDataset):
         return datapoint[crop_height:-crop_height, crop_width:-crop_width, :]
 
 
-config = DatasetConfig(augmentation_multiplicator=1, base_name='image_', file_ending='.IMG')
+config = DatasetConfig(augmentation_multiplicator=1)
 dataset = Hirise()
 

@@ -6,16 +6,12 @@ import copy
 
 class DatasetConfig(object):
     base_path = None
-    base_name = None
-    file_ending = None
     augmentation_multiplicator = None
     num_datapoints = None
     input_dimensions = None
     batch_size = None
 
-    def __init__(self, base_name, file_ending, augmentation_multiplicator):
-        self.base_name = base_name
-        self.file_ending = file_ending
+    def __init__(self, augmentation_multiplicator):
         self.augmentation_multiplicator = augmentation_multiplicator
 
     def initialize(self, base_path, input_dimensions, batch_size):
@@ -49,11 +45,11 @@ class AbstractDataset(object):
         self._current_batch = 0
         rand.shuffle(self._indices)
         
-    def _load_function(self, file_id):
+    def _load_function(self, file_name):
         """Load a file into a tensor
         
         Args:
-            file_id: Id of a file representing a datapoint
+            file_name: File name of file representing a datapoint
         
         Returns:
             A tensor containing the file in the desired form
@@ -162,8 +158,9 @@ class AbstractDataset(object):
             for batch_id in batch_ids:
                 data_point_id = self._get_data_point_id(batch_id)
                 data_point_version = self._get_data_point_version(batch_id)
+                file_name = os.listdir(self._config.base_path)[data_point_id]
 
-                data_point = self._load_function(data_point_id)
+                data_point = self._load_function(file_name)
 
                 processed_data_point = [data_point]
                 for fun in self._preprocess_pipeline():
