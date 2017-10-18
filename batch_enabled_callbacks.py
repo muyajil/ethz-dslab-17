@@ -113,12 +113,12 @@ class CallbackList(object):
         for callback in self.callbacks:
             callback.on_batch_end(batch, logs)
         self._delta_ts_batch_end.append(time.time() - t_before_callbacks)
-        delta_t_median = np.median(self._delta_ts_batch_end)
-        if (self._delta_t_batch > 0. and
-           (delta_t_median > 0.95 * self._delta_t_batch and delta_t_median > 0.1)):
-            warnings.warn('Method on_batch_end() is slow compared '
-                          'to the batch update (%f). Check your callbacks.'
-                          % delta_t_median)
+        # delta_t_median = np.median(self._delta_ts_batch_end)
+        # if (self._delta_t_batch > 0. and
+        #    (delta_t_median > 0.95 * self._delta_t_batch and delta_t_median > 0.1)):
+        #     warnings.warn('Method on_batch_end() is slow compared '
+        #                   'to the batch update (%f). Check your callbacks.'
+        #                   % delta_t_median)
 
     def on_train_begin(self, logs=None):
         """Called at the beginning of training.
