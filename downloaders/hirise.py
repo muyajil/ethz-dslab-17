@@ -20,13 +20,11 @@ def gather_links(download_location, num_images):
     level_0 = BeautifulSoup(response, "html5lib")
     level_0_links = list(map(lambda x: x['href'], level_0.find_all("a", href=True)))[1:]
     image_links = []
-    downloaded_images = 0
     for level_0_link in level_0_links:
         if len(image_links) > 100:
-            download_images(image_links, download_location, downloaded_images)
-            downloaded_images = downloaded_images + len(image_links)
+            download_images(image_links, download_location)
             image_links = []
-        if downloaded_images > num_images:
+        if len(os.listdir(download_location)) > num_images:
             return
         meta, response = http_client.request(base_path + level_0_link)
         level_1 = BeautifulSoup(response, "html5lib")
@@ -38,12 +36,11 @@ def gather_links(download_location, num_images):
             image_links.extend(list(map(lambda x: base_path + level_0_link + level_1_link + x, level_2_links)))
 
 
-def download_images(image_links, download_location, image_id):
+def download_images(image_links, download_location):
     print(str(len(image_links)) + " Images to be downloaded.")
     print("Starting download...")
     for image_link in image_links:
-        file_name = "image_" + str(image_id) + ".IMG"
-        image_id = image_id + 1
+        file_name = image_link.split("/")[-1]
         file_path = os.path.join(download_location, file_name)
         if os.path.exists(file_path):
             continue
@@ -51,15 +48,10 @@ def download_images(image_links, download_location, image_id):
             urllib.request.urlretrieve(image_link, file_path)
         except urllib.error.HTTPError:
             time.sleep(180)
-            image_id = image_id - 1
         except urllib.error.ContentTooShortError:
-            image_id = image_id - 1
             os.remove(file_path)
         if os.path.getsize(file_path) < 15000000: # Some images are not big enough, minimum file size is 15mb
-            image_id = image_id - 1
             os.remove(file_path)
-        if image_id % 100 == 0:
-            print("Downloaded " + str(image_id) + " images.")
 
 
 if __name__ == "__main__":
