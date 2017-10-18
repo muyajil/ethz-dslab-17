@@ -45,11 +45,16 @@ def download_images(image_links, download_location, image_id):
         file_name = "image_" + str(image_id) + ".IMG"
         image_id = image_id + 1
         file_path = os.path.join(download_location, file_name)
+        if os.path.exists(file_path):
+            continue
         try:
             urllib.request.urlretrieve(image_link, file_path)
         except urllib.error.HTTPError:
             time.sleep(180)
             image_id = image_id - 1
+        except urllib.error.ContentTooShortError:
+            image_id = image_id - 1
+            os.remove(file_path)
         if os.path.getsize(file_path) < 15000000: # Some images are not big enough, minimum file size is 15mb
             image_id = image_id - 1
             os.remove(file_path)
