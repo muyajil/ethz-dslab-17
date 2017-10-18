@@ -40,17 +40,15 @@ class AbstractEncoderDecoder(object):
         steps_per_epoch = training_set.get_size() / self._config.batch_size
 
         tfb_callback = keras.callbacks.TensorBoard(log_dir='./logs', histogram_freq=1,
-                                                                          batch_size=self._config.batch_size,
-                                                                          write_graph=True, write_grads=True,
-                                                                          write_images=True, embeddings_freq=1,
-                                                                          embeddings_layer_names=None,
-                                                                          embeddings_metadata=None)
+                                                                        batch_size=self._config.batch_size,
+                                                                        write_graph=True, write_grads=True,
+                                                                        write_images=True)
         
         mckp_callback = keras.callbacks.ModelCheckpoint(self._config.checkpoints_path,
-                                                                              monitor='val_loss',
-                                                                              verbose=0, save_best_only=False,
-                                                                              save_weights_only=False,
-                                                                              mode='auto', period=1)
+                                                                        monitor='val_loss',
+                                                                        verbose=0, save_best_only=False,
+                                                                        save_weights_only=False,
+                                                                        mode='auto', period=1)
 
         return self._model.fit_generator(training_set.batch_iter(),
                                          steps_per_epoch,
