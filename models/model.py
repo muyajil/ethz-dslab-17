@@ -37,9 +37,11 @@ class AbstractEncoderDecoder(object):
         Returns:
             Nothing
         """
+        print("Starting training..")
         steps_per_epoch = training_set.get_size() / self._config.batch_size
+        print("Calling fit_generator with steps_per_epoch=" + str(steps_per_epoch))
 
-        tfb_callback = keras.callbacks.TensorBoard(log_dir='./logs', histogram_freq=1,
+        tfb_callback = keras.callbacks.TensorBoard(log_dir='./logs', histogram_freq=0,
                                                                         batch_size=self._config.batch_size,
                                                                         write_graph=True, write_grads=True,
                                                                         write_images=True)
