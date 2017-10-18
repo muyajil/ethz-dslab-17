@@ -18,12 +18,13 @@ def run_model(run_mode, epochs, split_ratio):
     
     if run_mode == "test":
         training_set, validation_set = dataset.split(split_ratio)
-        model.train(training_set, epochs, validation_set=validation_set)
+        validation_set_as_array = validation_set.get_as_numpy_array()
+        model.train(training_set, epochs, validation_set=validation_set_as_array)
     
     if run_mode == "prod":
         model.train(dataset, epochs)
 
-    model.save_model()
+    # model.save_model()
 
 
 if __name__ == "__main__":
@@ -49,6 +50,8 @@ if __name__ == "__main__":
                         help="Width of image")
     parser.add_argument("base_path", metavar="base_path", type=str,
                         help="Base path for the dataset")
+    parser.add_argument("log_dir", metavar="log_dir", type=str,
+                        help="Where to save the logs to")
 
     args = parser.parse_args()
 
@@ -63,9 +66,7 @@ if __name__ == "__main__":
 
     model_module = locate("models." + args.model_name)
     model = getattr(model_module, "model")
-    if not os.path.exists(os.path.join("checkpoints", args.model_name)):
-        os.makedirs(os.path.join("checkpoints", args.model_name))
-    model_config = ModelConfig(args.batch_size, input_dimensions, "./checkpoints/" + args.model_name)
+    model_config = ModelConfig(args.batch_size, input_dimensions, args.log_dir)
     model.initialize(model_config)
 
     run_model(args.run_mode, args.epochs, args.split_ratio)

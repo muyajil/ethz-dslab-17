@@ -1,5 +1,6 @@
 import keras
 import os
+import time
 
 
 class ModelConfig(object):
@@ -8,12 +9,12 @@ class ModelConfig(object):
 
     batch_size = None
     input_dimensions = None
-    checkpoints_path = None
+    log_dir = None
 
-    def __init__(self, batch_size, input_dimensions, checkpoints_path=None):
+    def __init__(self, batch_size, input_dimensions, log_dir):
         self.batch_size = batch_size
         self.input_dimensions = input_dimensions
-        self.checkpoints_path = checkpoints_path
+        self.log_dir = log_dir
 
 
 class AbstractEncoderDecoder(object):
@@ -24,6 +25,7 @@ class AbstractEncoderDecoder(object):
 
     _config = None
     _model = None
+    _model_name = None
 
     def train(self, training_set, epochs, validation_set=None):
         """Fits the model parameters to the dataset.
@@ -40,26 +42,30 @@ class AbstractEncoderDecoder(object):
         print("Starting training..")
         steps_per_epoch = training_set.get_size() / self._config.batch_size
         print("Calling fit_generator with steps_per_epoch=" + str(steps_per_epoch))
-
-        tfb_callback = keras.callbacks.TensorBoard(log_dir='./logs', histogram_freq=0,
-                                                                        batch_size=self._config.batch_size,
-                                                                        write_graph=True, write_grads=True,
-                                                                        write_images=True)
+        print("log_dir: " + self._config.log_dir)
+        tfb_callback = keras.callbacks.TensorBoard(log_dir=self._config.log_dir,
+                                                   histogram_freq=1,
+                                                   batch_size=self._config.batch_size,
+                                                   write_graph=True,
+                                                   write_grads=True,
+                                                   write_images=True,
+                                                   write_batch_performance=True)
         
-        mckp_callback = keras.callbacks.ModelCheckpoint(self._config.checkpoints_path,
-                                                                        monitor='val_loss',
-                                                                        verbose=0, save_best_only=False,
-                                                                        save_weights_only=False,
-                                                                        mode='auto', period=1)
+        mckp_callback = keras.callbacks.ModelCheckpoint(str(os.path.join(self._config.log_dir, 'model.ckpt')),
+                                                        monitor='val_loss',
+                                                        verbose=0,
+                                                        save_best_only=False,
+                                                        save_weights_only=False,
+                                                        mode='auto',
+                                                        period=1)
 
         return self._model.fit_generator(training_set.batch_iter(),
                                          steps_per_epoch,
                                          epochs,
-                                         validation_data=validation_set.batch_iter() if validation_set is not None else None,
-                                         validation_steps=validation_set.get_size() if validation_set is not None else None,
+                                         validation_data=validation_set if validation_set is not None else None,
+                                         validation_steps=len(validation_set[0]) if validation_set is not None else None,
                                          shuffle=False,
-                                         callbacks=[tfb_callback, mckp_callback]
-                                         )
+                                         callbacks=[tfb_callback, mckp_callback])
 
     def validate(self, validation_set):
         """Validates the model on the provided dataset.
@@ -111,9 +117,6 @@ class AbstractEncoderDecoder(object):
         """
         raise NotImplementedError("Method not implemented.")
 
-    def save_model(self):
-        self._model.save(str(os.path.join(self._config.checkpoints_path, str(type(self).__name__) + ".h5")))
-
     def initialize(self, config=None, restore_path=None):
         """Sets up the model. This method MUST be called before anything else.
            It is like a constructor.
@@ -125,6 +128,8 @@ class AbstractEncoderDecoder(object):
                      If None, a new model will be created.
         """
         self._config = config
+        self._model_name = str(type(self).__name__)
+        self._config.log_dir = str(os.path.join(self._config.log_dir, self._model_name)) + "_" + str(int(time.time()))
         if restore_path is None:
             self._model = self._new_model()
             self._model.summary()

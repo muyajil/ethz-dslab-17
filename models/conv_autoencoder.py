@@ -2,6 +2,7 @@ from keras.layers.convolutional import Conv2D, UpSampling2D
 from keras.layers.pooling import MaxPooling2D
 from keras.layers import Input
 from keras.models import Model
+from utils import Dimension
 
 from models.model import AbstractEncoderDecoder, ModelConfig
 
@@ -22,17 +23,18 @@ class ConvAutoenoder(AbstractEncoderDecoder):
                      self._config.input_dimensions.depth)
 
         input_layer = Input(shape=input_dim)
-        conv1 = Conv2D(4, 16, strides=1, padding='same', activation='relu')(input_layer)
+        conv1 = Conv2D(32, 7, strides=1, padding='same', activation='relu')(input_layer)
+        conv2 = Conv2D(16, 5, strides=1, padding='same', activation='relu')(conv1)
+        pool1 = MaxPooling2D(pool_size=4, padding='same')(conv2)
+        conv3 = Conv2D(8, 3, strides=1, padding='same', activation='relu')(pool1)
+        pool2 = MaxPooling2D(pool_size=4, padding='same')(conv3)
+        conv4 = Conv2D(32, 7, strides=1, padding='same', activation='relu')(pool2)
+        up1 = UpSampling2D(size=4)(conv4)
+        conv5 = Conv2D(16, 7, strides=1, padding='same', activation='relu')(up1)
+        up2 = UpSampling2D(size=4)(conv5)
+        conv6 = Conv2D(input_dim[2], 5, strides=1, padding='same', activation='sigmoid')(up2)
 
-        encoding = MaxPooling2D(pool_size=2, padding='same')(conv1)
-
-        conv2 = Conv2D(4, 16, strides=1, padding='same', activation='relu')(encoding)
-
-        u1 = UpSampling2D(size=2)(conv2)
-        
-        decoded = Conv2D(1, 16, strides=1, padding='same', activation='sigmoid')(u1)
-
-        new_model = Model(input_layer, decoded)
+        new_model = Model(input_layer, conv6)
         new_model.compile(optimizer='adadelta', loss='mean_squared_error')
 
         return new_model
@@ -41,6 +43,6 @@ class ConvAutoenoder(AbstractEncoderDecoder):
 model = ConvAutoenoder()
         
 if __name__ == '__main__':
-    config = ModelConfig(64, (1024, 1024, 3))
+    config = ModelConfig(1, Dimension(1024, 512, 3), "./debug_logs")
     model = ConvAutoenoder()
     model.initialize(config=config)

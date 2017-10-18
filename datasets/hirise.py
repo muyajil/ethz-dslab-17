@@ -4,7 +4,6 @@ from datasets.abstractdataset import DatasetConfig
 import os
 import numpy as np
 
-
 class Hirise(AbstractDataset):
 
     def _preprocess_pipeline(self):

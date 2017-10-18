@@ -176,7 +176,18 @@ class AbstractDataset(object):
             final_batch = np.stack(batch)
 
             yield (final_batch, final_batch)
-        
+
+    def get_as_numpy_array(self):
+        """Return the whole dataset in a numpy array
+        This is used so that we can store images and histograms for Tensorboard
+        """
+        batch_iterator = self.batch_iter()
+        this_epoch = self._current_epoch
+        dataset = next(batch_iterator)[0]
+        while this_epoch == self._current_epoch:
+            dataset = np.concatenate((dataset, next(batch_iterator)[0]))
+        return dataset, dataset
+
     def split(self, split_ratio):
         """Splits the Dataset into Test and Train 
         

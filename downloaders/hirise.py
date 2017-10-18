@@ -20,7 +20,7 @@ def gather_links(download_location, min_images):
     level_0 = BeautifulSoup(response, "html5lib")
     level_0_links = list(map(lambda x: x['href'], level_0.find_all("a", href=True)))[1:]
     image_links = []
-    for level_0_link in level_0_links:
+    for level_0_link in level_0_links[1:]: # TODO remove [1:] this is just temporary
         if len(image_links) > 100:
             download_images(image_links, download_location)
             image_links = []
@@ -48,6 +48,8 @@ def download_images(image_links, download_location):
             urllib.request.urlretrieve(image_link, file_path)
         except urllib.error.HTTPError:
             time.sleep(180)
+            if os.path.exists(file_path):
+                os.remove(file_path)
         except urllib.error.ContentTooShortError:
             os.remove(file_path)
         if os.path.getsize(file_path) < 15000000: # Some images are not big enough, minimum file size is 15mb
@@ -60,5 +62,6 @@ if __name__ == "__main__":
     parser.add_argument("--min_images", dest="min_images", type=int, help="Minimum number of images to download", default=-1)
     args = parser.parse_args()
 
-    os.makedirs(args.download_location)
+    if not os.path.exists(args.download_location):
+        os.makedirs(args.download_location)
     gather_links(args.download_location, args.min_images)
