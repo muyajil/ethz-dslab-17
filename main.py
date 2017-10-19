@@ -1,11 +1,18 @@
 import argparse
 import os
+import threading
 from pydoc import locate
 from models.model import ModelConfig
 from utils import Dimension
 
 model = None
 dataset = None
+
+
+def run_tensorboard(logdir, pythonpath):
+    import os
+    os.system(pythonpath + " -m tensorboard.main --logdir=" + logdir)
+    return
 
 
 def run_model(run_mode, epochs, split_ratio):
@@ -51,6 +58,8 @@ if __name__ == "__main__":
                         help="Base path for the dataset")
     parser.add_argument("log_dir", metavar="log_dir", type=str,
                         help="Where to save the logs to")
+    parser.add_argument("pythonpath", metavar="pythonpath", type=str,
+                        help="Path to your python.exe")
 
     args = parser.parse_args()
 
@@ -67,5 +76,8 @@ if __name__ == "__main__":
     model = getattr(model_module, "model")
     model_config = ModelConfig(args.batch_size, input_dimensions, args.log_dir)
     model.initialize(model_config)
+
+    t = threading.Thread(target=run_tensorboard, args=([args.log_dir, args.pythonpath]))
+    t.start()
 
     run_model(args.run_mode, args.epochs, args.split_ratio)
