@@ -1,10 +1,11 @@
-from datasets.abstractdataset import AbstractDataset
+from datasets.dataset import Dataset
 from planetaryimage.pds3image import PDS3Image
-from datasets.abstractdataset import DatasetConfig
+from datasets.dataset import DatasetConfig
 import os
 import numpy as np
 
-class Hirise(AbstractDataset):
+
+class Hirise(Dataset):
 
     def _preprocess_pipeline(self):
         return []

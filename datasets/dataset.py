@@ -21,7 +21,7 @@ class DatasetConfig(object):
         self.num_datapoints = len(os.listdir(self.base_path))
 
 
-class AbstractDataset(object):
+class Dataset(object):
     """Class representing a dataset
     
     Usage:
@@ -236,7 +236,7 @@ class AbstractDataset(object):
                 indices: The indices of datapoints in this dataset
 
             Returns:
-                AbstractDataset
+                Dataset
         """
         if base_path is not None:
             config.initialize(base_path, input_dimensions, batch_size)

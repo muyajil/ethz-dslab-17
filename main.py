@@ -18,8 +18,7 @@ def run_model(run_mode, epochs, split_ratio):
     
     if run_mode == "test":
         training_set, validation_set = dataset.split(split_ratio)
-        validation_set_as_array = validation_set.get_as_numpy_array()
-        model.train(training_set, epochs, validation_set=validation_set_as_array)
+        model.train(training_set, epochs, validation_set=validation_set)
     
     if run_mode == "prod":
         model.train(dataset, epochs)

@@ -62,8 +62,8 @@ class AbstractEncoderDecoder(object):
         return self._model.fit_generator(training_set.batch_iter(),
                                          steps_per_epoch,
                                          epochs,
-                                         validation_data=validation_set if validation_set is not None else None,
-                                         validation_steps=len(validation_set[0]) if validation_set is not None else None,
+                                         validation_data=validation_set.get_as_numpy_array() if validation_set is not None else None,
+                                         validation_steps=validation_set.get_size() if validation_set is not None else None,
                                          shuffle=False,
                                          callbacks=[tfb_callback, mckp_callback])
 
