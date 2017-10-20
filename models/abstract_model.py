@@ -99,7 +99,13 @@ class AbstractModel(object):
         Returns:
             An instance of the model.
         """
-        
+
+    def _print_model_summary(self):
+        """ Prints the model structure and other information.
+        """
+        pass
+
+
     def initialize(self, config=None, restore_path=None):
         """Sets up the model. This method MUST be called before anything else.
            It is like a constructor.
@@ -114,5 +120,6 @@ class AbstractModel(object):
         self._config.log_dir = str(os.path.join(self._config.log_dir, self._model_name)) + "_" + str(int(time.time()))
         if restore_path is None:
             self._model = self._new_model()
+            self._print_model_summary()
         else:
             self._model = self._restore_model(restore_path)
