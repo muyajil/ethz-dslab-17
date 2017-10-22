@@ -20,7 +20,7 @@ def gather_links(download_location, min_images):
     level_0 = BeautifulSoup(response, "html5lib")
     level_0_links = list(map(lambda x: x['href'], level_0.find_all("a", href=True)))[1:]
     image_links = []
-    for level_0_link in level_0_links[1:]: # TODO remove [1:] this is just temporary
+    for level_0_link in level_0_links[4:]: # TODO remove [1:] this is just temporary
         if len(image_links) > 100:
             download_images(image_links, download_location)
             image_links = []
@@ -50,10 +50,17 @@ def download_images(image_links, download_location):
             time.sleep(180)
             if os.path.exists(file_path):
                 os.remove(file_path)
+                print("HTTP Error occured")
+                continue
         except urllib.error.ContentTooShortError:
+            print("Image download error: " + file_name)
             os.remove(file_path)
+            continue
         if os.path.getsize(file_path) < 15000000: # Some images are not big enough, minimum file size is 15mb
             os.remove(file_path)
+            print("Image was too small: " + file_name)
+            continue
+        print("Downloaded image: " + file_name)
 
 
 if __name__ == "__main__":

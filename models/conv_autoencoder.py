@@ -16,25 +16,29 @@ class ConvAutoenoder(AbstractEncoderDecoder):
         pass
 
     def _new_model(self):
-        """Creates a new convolutional autoencoder model.
+        """Creates a new xlutional autoencoder model.
         """
         input_dim = (self._config.input_dimensions.height,
                      self._config.input_dimensions.width,
                      self._config.input_dimensions.depth)
 
         input_layer = Input(shape=input_dim)
-        conv1 = Conv2D(32, 7, strides=1, padding='same', activation='relu')(input_layer)
-        conv2 = Conv2D(16, 5, strides=1, padding='same', activation='relu')(conv1)
-        pool1 = MaxPooling2D(pool_size=4, padding='same')(conv2)
-        conv3 = Conv2D(8, 3, strides=1, padding='same', activation='relu')(pool1)
-        pool2 = MaxPooling2D(pool_size=4, padding='same')(conv3)
-        conv4 = Conv2D(32, 7, strides=1, padding='same', activation='relu')(pool2)
-        up1 = UpSampling2D(size=4)(conv4)
-        conv5 = Conv2D(16, 7, strides=1, padding='same', activation='relu')(up1)
-        up2 = UpSampling2D(size=4)(conv5)
-        conv6 = Conv2D(input_dim[2], 5, strides=1, padding='same', activation='sigmoid')(up2)
+        x = Conv2D(32, 32, strides=1, padding='same', activation='relu')(input_layer)
+        x = Conv2D(16, 16, strides=2, padding='same', activation='relu')(x)
+        x = Conv2D(16, 16, strides=4, padding='same', activation='relu')(x)
+        x = Conv2D(16, 16, strides=4, padding='same', activation='relu')(x)
+        x = MaxPooling2D(pool_size=4, padding='same')(x)
+        x = Conv2D(8, 8, strides=1, padding='same', activation='relu')(x)
+        x = MaxPooling2D(pool_size=4, padding='same')(x)
+        x = Conv2D(32, 32, strides=1, padding='same', activation='relu')(x)
+        x = UpSampling2D(size=4)(x)
+        x = Conv2D(16, 16, strides=1, padding='same', activation='relu')(x)
+        x = UpSampling2D(size=4)(x)
+        x = Conv2D(16, 16, strides=1, padding='same', activation='relu')(x)
+        x = Conv2D(16, 16, strides=1, padding='same', activation='relu')(x)
+        x = Conv2D(input_dim[2], 8, strides=1, padding='same', activation='sigmoid')(x)
 
-        new_model = Model(input_layer, conv6)
+        new_model = Model(input_layer, x)
         new_model.compile(optimizer='adadelta', loss='mean_squared_error')
 
         return new_model
