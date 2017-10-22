@@ -26,7 +26,6 @@ class AbstractModel(object):
     
     def train(self, training_set, epochs, validation_set=None):
         """Fits the model parameters to the dataset.
-           Only one epoch.
 
         Args:
             training_set: Instance of AbstractDataset
