@@ -4,10 +4,11 @@ from keras.layers import Input
 from keras.models import Model
 from utils import Dimension
 
-from models.model import AbstractEncoderDecoder, ModelConfig
+from models.abstract_model import ModelConfig
+from models.abstract_keras_model import AbstractKerasModel
 
 
-class ConvAutoenoder(AbstractEncoderDecoder):
+class ConvAutoenoder(AbstractKerasModel):
 
     def encode(self, datapoint):
         pass
