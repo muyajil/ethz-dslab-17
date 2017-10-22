@@ -41,7 +41,7 @@ class Pix2pix(AbstractTensorflowModel):
             
             # Initialization
             init_op = tf.global_variables_initializer()
-            self.sess.run(init_op)
+            sess.run(init_op)
             
             # Merge summaries
             self.G_summary = tf.summary.merge([self.D_fake_summary, self.G_out_summary, self.D_fake_loss_summary, self.G_loss_summary])
@@ -52,14 +52,25 @@ class Pix2pix(AbstractTensorflowModel):
             start_time = time.time()
             
             # TODO: add model restore
+            
             for epoch in xrange(epochs):
-
+                for batch in training_set.batch_iter_epoch():
+                    
+                    # Discriminator
+                    _, summary_str = sess.run([D_optimizer, self.D_summary],
+                                                    feed_dict={ self.real_input: batch })
+                    self.writer.add_summary(summary_str, counter)
+                    
+                    # Generator
+                    _, summary_str = sess.run([G_optimizer, self.D_summary],
+                                               feed_dict={ self.real_input: batch })
+                    self.writer.add_summary(summary_str, counter)
 
     def _new_model(self):
         ''' Creates a new pix2pix tensorflow model.
         '''
         # Create Generator and Discriminator
-        self.real_input = tf.placeholder(tf.float32, [self._batch_size,
+        self.real_input = tf.placeholder(tf.float32, [self._config._batch_size,
                                                  self._config.input_dimensions.height,
                                                  self._config.input_dimensions.width,
                                                  self._config.input_dimensions.depth])
@@ -123,7 +134,7 @@ class Pix2pix(AbstractTensorflowModel):
             o_w = self._config.input_dimensions.width   
             h2, h4, h8, h16, h32, h64, h128 = int(o_h/2), int(o_h/4), int(o_h/8), int(o_h/16), int(o_h/32), int(o_h/64), int(o_h/128)
             w2, w4, w8, w16, w32, w64, w128 = int(o_w/2), int(o_w/4), int(o_w/8), int(o_w/16), int(o_w/32), int(o_w/64), int(o_w/128)
-            gen_dim = self._gen_conv1_filters                                                  
+            self.gen_dim = self._gen_conv1_filters                                                  
                                                                                                 # EXAMPLE:  if _gen_conv1_filters = 64
             # Encoder                                                                           # image:    [batch_size, 1024, 1024, 1]
             e1 = conv2d(image, self.gen_dim, name='g_e1_conv')                                  # e1:       [batch_size, 512, 512, 64]
