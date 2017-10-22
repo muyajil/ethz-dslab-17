@@ -136,7 +136,7 @@ class Dataset(object):
         for i in range(diff):
             batch.append(batch[i % len(batch)])
 
-    def batch_iter(self):
+    def batch_iter(self, stop_after_epoch=False):
         """Returns the next batch of the dataset
 
         Returns:
@@ -151,6 +151,8 @@ class Dataset(object):
             if lower == upper:
                 self._reset_batches()
                 self._current_epoch = self._current_epoch + 1
+                if stop_after_epoch:
+                    return
                 continue
             
             batch_ids = self._indices[lower:upper]
