@@ -2,7 +2,7 @@ import argparse
 import os
 import threading
 from pydoc import locate
-from models.model import ModelConfig
+from models.pix2pix_tf import Config
 from utils import Dimension
 
 model = None
@@ -74,7 +74,7 @@ if __name__ == "__main__":
 
     model_module = locate("models." + args.model_name)
     model = getattr(model_module, "model")
-    model_config = ModelConfig(args.batch_size, input_dimensions, args.log_dir)
+    model_config = Config(args.batch_size, input_dimensions, args.log_dir)
     model.initialize(model_config)
 
     t = threading.Thread(target=run_tensorboard, args=([args.log_dir, args.pythonpath]))

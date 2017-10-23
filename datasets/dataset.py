@@ -162,12 +162,15 @@ class Dataset(object):
                 data_point_version = self._get_data_point_version(batch_id)
                 file_name = os.listdir(self._config.base_path)[data_point_id]
 
-                data_point = self._load_function(file_name)
+                try:
+                    data_point = self._load_function(file_name)
+                except ValueError:
+                    raise ValueError(file_name + " could not be loaded!")
 
                 processed_data_point = [data_point]
                 for fun in self._preprocess_pipeline():
                     processed_data_point = map(fun, processed_data_point)
-                cropped_data_point = self._crop_input(processed_data_point[data_point_version])
+                cropped_data_point = self._crop_input(list(processed_data_point[data_point_version]))
                 batch.append(cropped_data_point)
             
             if len(batch) < self._config.batch_size:
@@ -175,9 +178,7 @@ class Dataset(object):
             
             self._current_batch = self._current_batch + 1
 
-            final_batch = np.stack(batch)
-
-            yield (final_batch, final_batch)
+            yield np.stack(batch)
 
     def get_as_numpy_array(self):
         """Return the whole dataset in a numpy array
