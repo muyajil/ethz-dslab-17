@@ -7,7 +7,7 @@ import tensorflow as tf
 
 def batch_norm(x,
                eps=1e-5,
-               momentum = 0.9,
+               momentum=0.9,
                name="batch_norm"):
     return tf.contrib.layers.batch_norm(x,
                                         decay=momentum,
@@ -28,7 +28,7 @@ def conv2d(input_,
     ''' Convolutional Layer with default stride 2x2.
     '''
     with tf.variable_scope(name):
-        in_channel = input_.get_shape()[-1]
+        in_channels = input_.get_shape()[-1]
         w = tf.get_variable('w',
                             [kernel_height, kernel_width, in_channels, out_channels],
                             initializer=tf.truncated_normal_initializer(stddev=stddev))
