@@ -170,7 +170,7 @@ class Dataset(object):
                 processed_data_point = [data_point]
                 for fun in self._preprocess_pipeline():
                     processed_data_point = map(fun, processed_data_point)
-                cropped_data_point = self._crop_input(list(processed_data_point[data_point_version]))
+                cropped_data_point = self._crop_input(list(processed_data_point)[data_point_version])
                 batch.append(cropped_data_point)
             
             if len(batch) < self._config.batch_size:
