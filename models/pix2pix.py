@@ -48,9 +48,14 @@ class Pix2PixParams(object):
     dis_vars = None
     gen_vars = None
 
-    dis_summary = None
-    gen_summary = None
+    dis_loss_summary = None
+    dis_real_loss_summary = None
+    dis_fake_loss_summary = None
+    gen_loss_summary = None
     gen_output_summary = None
+    dis_real_pred_histo = None
+    dis_fake_pred_histo = None
+    gen_l1_loss_summary = None
 
 
 class Pix2pix(object):
@@ -61,6 +66,7 @@ class Pix2pix(object):
     _saver = None
     _model_name = None
     _config = None
+    _restore = False
 
     def __init__(self, config=None, restore_path=None):
         """
@@ -72,8 +78,9 @@ class Pix2pix(object):
         self._model_name = str(type(self).__name__)
         if restore_path is not None:
             config.log_dir = restore_path
+            self._restore = True
         else:
-            config.log_dir = str(os.path.join(config.log_dir, self._model_name + "_" + str(time.time())))
+            config.log_dir = str(os.path.join(config.log_dir, self._model_name + "_" + str(int(time.time()))))
         self._config = config
         self._setup_model()
 
@@ -82,7 +89,6 @@ class Pix2pix(object):
 
     def restore(self, sess):
         print("Reading checkpoint...")
-
         ckpt = tf.train.get_checkpoint_state(self._config.log_dir)
         if ckpt and ckpt.model_checkpoint_path:
             ckpt_name = os.path.basename(ckpt.model_checkpoint_path)
@@ -117,31 +123,41 @@ class Pix2pix(object):
             train_step = 1
             start_time = time.time()
 
-            if self.restore(sess):
-                print("Load SUCCESS")
+            if not self._restore:
+                print("Will create new model...")
             else:
-                print("Load failed...")
+                if self.restore(sess):
+                    print("Load succeeded...")
+                else:
+                    print("Load failed...")
 
             for epoch in xrange(epochs):
-                for batch in training_set.batch_iter(stop_after_epoch=True):
+                for batch_num, batch in enumerate(training_set.batch_iter(stop_after_epoch=True)):
 
                     # Discriminator
-                    _, summary_str = sess.run([dis_optimizer, self._params.dis_summary],
-                                              feed_dict={self._params.input_image: batch})
-                    writer.add_summary(summary_str, train_step)
+                    if batch_num % 2 == 0:
+                        dis_summary = tf.summary.merge(
+                            [self._params.dis_real_loss_summary, self._params.dis_real_pred_histo,
+                             self._params.dis_loss_summary])
+                        _, summary_str = sess.run([dis_optimizer, dis_summary],
+                                                  feed_dict={self._params.input_image: batch})
+                        writer.add_summary(summary_str, train_step)
 
                     # Generator
-                    _, summary_str = sess.run([gen_optimizer, self._params.gen_summary],
+                    gen_summary = tf.summary.merge(
+                        [self._params.dis_fake_pred_histo, self._params.dis_fake_loss_summary,
+                         self._params.gen_loss_summary])
+                    _, summary_str = sess.run([gen_optimizer, gen_summary],
                                               feed_dict={self._params.input_image: batch})
                     writer.add_summary(summary_str, train_step)
 
                     dis_fake_error = self._params.dis_fake_loss.eval({self._params.input_image: batch})
                     dis_real_error = self._params.dis_real_loss.eval({self._params.input_image: batch})
                     gen_error = self._params.gen_loss.eval({self._params.input_image: batch})
-                    print("Epoch: [%2d] Train Step: [%2d] Batch: [%2d Time: %4.4f, dis_loss: %.8f, gen_loss: %.8f" % (
-                        epoch,
+                    print("Epoch: [%2d]\tTrain Step: [%2d]\tBatch: [%2d]\tTime: %4.4f\tdis_loss: %.8f\tgen_loss: %.8f" % (
+                        epoch + 1,
                         train_step,
-                        train_step // epoch,
+                        batch_num + 1,
                         time.time() - start_time,
                         dis_fake_error + dis_real_error,
                         gen_error))
@@ -169,10 +185,8 @@ class Pix2pix(object):
                                                                self._config.input_dimensions.depth])
 
         generator_output = self._generator(self._params.input_image)
-        real_image = tf.concat([self._params.input_image, self._params.input_image], 3)
-        generator_image = tf.concat([self._params.input_image, generator_output], 3)
-        dis_real_pred, dis_real_logits = self._discriminator(real_image, reuse=False)
-        dis_fake_pred, dis_fake_logits = self._discriminator(generator_image, reuse=True)
+        dis_real_pred, dis_real_logits = self._discriminator(self._params.input_image, reuse=False)
+        dis_fake_pred, dis_fake_logits = self._discriminator(generator_output, reuse=True)
 
         # Loss functions
         self._params.dis_real_loss = tf.reduce_mean(
@@ -180,15 +194,21 @@ class Pix2pix(object):
         self._params.dis_fake_loss = tf.reduce_mean(
             tf.nn.sigmoid_cross_entropy_with_logits(logits=dis_fake_logits, labels=tf.zeros_like(dis_fake_pred)))
         self._params.dis_loss = self._params.dis_fake_loss + self._params.dis_real_loss
+        gen_l1_loss = tf.reduce_mean(tf.abs(self._params.input_image - generator_output))
         self._params.gen_loss = \
             tf.reduce_mean(
                 tf.nn.sigmoid_cross_entropy_with_logits(logits=dis_fake_logits, labels=tf.ones_like(dis_fake_pred))) \
-            + self._config.l1_lambda * tf.reduce_mean(tf.abs(self._params.input_image - generator_output))
+            + self._config.l1_lambda * gen_l1_loss
 
         # Tensorboard
-        self._params.dis_summary = tf.summary.scalar("dis_loss", self._params.dis_loss)
-        self._params.gen_summary = tf.summary.scalar("gen_loss", self._params.gen_loss)
-        # TODO: I am not sure this is correct... see validate
+        self._params.dis_loss_summary = tf.summary.scalar("dis_loss", self._params.dis_loss)
+        self._params.gen_loss_summary = tf.summary.scalar("gen_loss", self._params.gen_loss)
+        self._params.dis_real_loss_summary = tf.summary.scalar("dis_real_loss", self._params.dis_real_loss)
+        self._params.dis_fake_loss_summary = tf.summary.scalar("dis_fake_loss", self._params.dis_fake_loss)
+        self._params.dis_real_pred_histo = tf.summary.histogram("dis_real_pred", dis_real_pred)
+        self._params.dis_fake_pred_histo = tf.summary.histogram("dis_fake_pred", dis_fake_pred)
+        self._params.gen_l1_loss_summary = tf.summary.scalar("gen_l1_loss", gen_l1_loss)
+
         self._params.gen_output_summary = \
             tf.summary.image("gen_output", tf.concat([generator_output, self._params.input_image], 1))
 
@@ -199,7 +219,7 @@ class Pix2pix(object):
 
         self._saver = tf.train.Saver()
 
-    def _discriminator(self, input_output_image, reuse=False):
+    def _discriminator(self, output_image, reuse=False):
         with tf.variable_scope("discriminator") as scope:
             if reuse:
                 tf.get_variable_scope().reuse_variables()
@@ -215,7 +235,7 @@ class Pix2pix(object):
             h3:           [batch_size, 128,  128,  512]
             """
 
-            h0 = lrelu(conv2d(input_output_image, self._config.dis_conv1_filters, name='d_h0_conv'))
+            h0 = lrelu(conv2d(output_image, self._config.dis_conv1_filters, name='d_h0_conv'))
             h1 = lrelu(batch_norm(conv2d(h0, self._config.dis_conv1_filters * 2, name='d_h1_conv'), name='d_bn1'))
             h2 = lrelu(batch_norm(conv2d(h1, self._config.dis_conv1_filters * 4, name='d_h2_conv'), name='d_bn2'))
             h3 = lrelu(batch_norm(conv2d(h2, self._config.dis_conv1_filters * 8, stride_height=1, stride_width=1,
