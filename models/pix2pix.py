@@ -52,7 +52,7 @@ class Pix2PixParams(object):
     dis_real_loss_summary = None
     dis_fake_loss_summary = None
     gen_loss_summary = None
-    gen_output_summary = None
+    concatenated_images = None
     dis_real_pred_histo = None
     dis_fake_pred_histo = None
     gen_l1_loss_summary = None
@@ -146,7 +146,7 @@ class Pix2pix(object):
                     # Generator
                     gen_summary = tf.summary.merge(
                         [self._params.dis_fake_pred_histo, self._params.dis_fake_loss_summary,
-                         self._params.gen_loss_summary])
+                         self._params.gen_loss_summary, self._params.gen_l1_loss_summary])
                     _, summary_str = sess.run([gen_optimizer, gen_summary],
                                               feed_dict={self._params.input_image: batch})
                     writer.add_summary(summary_str, train_step)
@@ -154,26 +154,45 @@ class Pix2pix(object):
                     dis_fake_error = self._params.dis_fake_loss.eval({self._params.input_image: batch})
                     dis_real_error = self._params.dis_real_loss.eval({self._params.input_image: batch})
                     gen_error = self._params.gen_loss.eval({self._params.input_image: batch})
-                    print("Epoch: [%2d]\tTrain Step: [%2d]\tBatch: [%2d]\tTime: %4.4f\tdis_loss: %.8f\tgen_loss: %.8f" % (
-                        epoch + 1,
-                        train_step,
-                        batch_num + 1,
-                        time.time() - start_time,
-                        dis_fake_error + dis_real_error,
-                        gen_error))
+                    print(
+                        "Epoch: [%2d]\tTrain Step: [%2d]\tBatch: [%2d]\tTime: %4.4f\tdis_loss: %.8f\tgen_loss: %.8f" % (
+                            epoch + 1,
+                            train_step,
+                            batch_num + 1,
+                            time.time() - start_time,
+                            dis_fake_error + dis_real_error,
+                            gen_error))
 
                     if train_step % 500 == 0:
                         self.save(sess, train_step)
 
                     if train_step % 100 == 0:
-                        for summary in self.validate(sess, validation_set):
-                            writer.add_summary(summary, global_step=train_step)
+                        images_summary, loss_summary = self.validate(sess, validation_set)
+                        writer.add_summary(images_summary, global_step=train_step) # TODO: Images look weird, I don't know why exactly
+                        writer.add_summary(loss_summary, global_step=train_step)
                     train_step = train_step + 1
 
     def validate(self, sess, validation_set):
+        print("Validating...")
+        validation_losses = []
+        batch_images = []
         for batch in validation_set.batch_iter(stop_after_epoch=True):
-            _, summary = sess.run([self._params.gen_output_summary], feed_dict={self._params.input_image: batch})
-            yield summary
+            batch_images.append(sess.run([self._params.concatenated_images], feed_dict={self._params.input_image: batch})[0])
+            validation_losses.append(self._params.gen_loss.eval({self._params.input_image: batch}))
+        avg_val_loss = sum(validation_losses) / len(validation_losses)
+        single_images = []
+        for image in batch_images:
+            single_images.extend(tf.split(image, self._config.batch_size))
+        images_summary = tf.Summary()
+        for image_id, image in enumerate(single_images):
+            rescaled_image = tf.squeeze(tf.cast((image + 1) * 127.5, dtype=tf.uint8), axis=0)
+            encoded_image = tf.image.encode_png(rescaled_image).eval()
+            images_summary.value.add(tag='validation_images/' + str(image_id), image=tf.Summary.Image(encoded_image_string=encoded_image))
+
+        loss_summary = tf.Summary()
+        loss_summary.value.add(tag='avg_validation_loss', simple_value=avg_val_loss)
+
+        return images_summary, loss_summary
 
     def _setup_model(self):
         """ Creates a new pix2pix tensorflow model.
@@ -208,9 +227,7 @@ class Pix2pix(object):
         self._params.dis_real_pred_histo = tf.summary.histogram("dis_real_pred", dis_real_pred)
         self._params.dis_fake_pred_histo = tf.summary.histogram("dis_fake_pred", dis_fake_pred)
         self._params.gen_l1_loss_summary = tf.summary.scalar("gen_l1_loss", gen_l1_loss)
-
-        self._params.gen_output_summary = \
-            tf.summary.image("gen_output", tf.concat([generator_output, self._params.input_image], 1))
+        self._params.concatenated_images = tf.concat([generator_output, self._params.input_image], 1)
 
         # Trainable Variables
         train_vars = tf.trainable_variables()
@@ -241,7 +258,7 @@ class Pix2pix(object):
             h3 = lrelu(batch_norm(conv2d(h2, self._config.dis_conv1_filters * 8, stride_height=1, stride_width=1,
                                          name='d_h3_conv'), name='d_bn3'))
             h4 = linear(tf.reshape(h3, [self._config.batch_size, -1]), 1, scope='d_h3_lin')
-            return tf.nn.sigmoid(h4), h4
+            return tf.nn.tanh(h4), h4
 
     def _generator(self, image):
         """

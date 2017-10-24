@@ -8,7 +8,7 @@ import numpy as np
 class Hirise(Dataset):
 
     def _preprocess_pipeline(self):
-        return [lambda x: x / 255]
+        return [lambda x: (x / 127.5) - 1]
 
     def _load_function(self, file_name):
         file = os.path.join(self._config.base_path, file_name)
