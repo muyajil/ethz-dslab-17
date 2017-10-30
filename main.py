@@ -2,7 +2,7 @@ import argparse
 import os
 import threading
 from pydoc import locate
-from models.model import ModelConfig
+from models.abstract_model import ModelConfig
 from utils import Dimension
 
 model = None

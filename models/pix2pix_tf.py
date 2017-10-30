@@ -4,7 +4,7 @@
 import tensorflow as tf
 import numpy as np
 from six.moves import xrange
-
+import time
 
 from models.tf_utils import *
 
@@ -54,7 +54,7 @@ class Pix2pix(AbstractTensorflowModel):
             # TODO: add model restore
             
             for epoch in xrange(epochs):
-                for batch in training_set.batch_iter_epoch():
+                for batch in training_set.batch_iter(stop_after_epoch=True):
                     
                     # Discriminator
                     _, summary_str = sess.run([D_optimizer, self.D_summary],
@@ -65,12 +65,14 @@ class Pix2pix(AbstractTensorflowModel):
                     _, summary_str = sess.run([G_optimizer, self.D_summary],
                                                feed_dict={ self.real_input: batch })
                     self.writer.add_summary(summary_str, counter)
+                    counter+=1
+                    print(str(counter))
 
     def _new_model(self):
         ''' Creates a new pix2pix tensorflow model.
         '''
         # Create Generator and Discriminator
-        self.real_input = tf.placeholder(tf.float32, [self._config._batch_size,
+        self.real_input = tf.placeholder(tf.float32, [self._config.batch_size,
                                                  self._config.input_dimensions.height,
                                                  self._config.input_dimensions.width,
                                                  self._config.input_dimensions.depth])
@@ -112,15 +114,15 @@ class Pix2pix(AbstractTensorflowModel):
                 tf.get_variable_scope().reuse_variables()
             else:
                 assert tf.get_variable_scope().reuse == False
-            dis_dim = _dis_conv1_filters
+            dis_dim = self._dis_conv1_filters
                                                                                                 # EXAMPLE:  if _dis_conv1_filters = 64
                                                                                                 # image_AB:     [batch_size, 1024, 1024, 1+1]
             h0 = lrelu(conv2d(image_AB, dis_dim, name='d_h0_conv'))                             # h0:           [batch_size, 512,  512,  64]
-            h1 = lrelu(batch_norm(conv2d(h0, dis_dim*2, name='d_h1_conv'), 'd_bn1'))            # h1:           [batch_size, 256,  256,  128]
-            h2 = lrelu(batch_norm(conv2d(h1, dis_dim*4, name='d_h2_conv'), 'd_bn2'))            # h2:           [batch_size, 128,  128,  256]
+            h1 = lrelu(batch_norm(conv2d(h0, dis_dim*2, name='d_h1_conv'), name='d_bn1'))            # h1:           [batch_size, 256,  256,  128]
+            h2 = lrelu(batch_norm(conv2d(h1, dis_dim*4, name='d_h2_conv'), name='d_bn2'))            # h2:           [batch_size, 128,  128,  256]
             h3 = lrelu(batch_norm(conv2d(h2, dis_dim*8, stride_height=1, stride_width=1,
-                                                        name='d_h3_conv'), 'd_bn3'))            # h3:           [batch_size, 128,  128,  512]
-            h4 = linear(tf.reshape(h3, [self._config.batch_size, -1]), 1, 'd_h3_lin')
+                                                        name='d_h3_conv'), name='d_bn3'))            # h3:           [batch_size, 128,  128,  512]
+            h4 = linear(tf.reshape(h3, [self._config.batch_size, -1]), 1, scope='d_h3_lin')
             return tf.nn.sigmoid(h4), h4
         
     def _generator(self, image):
@@ -138,45 +140,45 @@ class Pix2pix(AbstractTensorflowModel):
                                                                                                 # EXAMPLE:  if _gen_conv1_filters = 64
             # Encoder                                                                           # image:    [batch_size, 1024, 1024, 1]
             e1 = conv2d(image, self.gen_dim, name='g_e1_conv')                                  # e1:       [batch_size, 512, 512, 64]
-            e2 = batch_norm(conv2d(lrelu(e1), self.gen_dim*2, name='g_e2_conv'), 'g_bn_e2')     # e2:       [batch_size, 256, 256, 128]
-            e3 = batch_norm(conv2d(lrelu(e2), self.gen_dim*4, name='g_e3_conv'), 'g_bn_e3')     # e3:       [batch_size, 128, 128, 256]
-            e4 = batch_norm(conv2d(lrelu(e3), self.gen_dim*8, name='g_e4_conv'), 'g_bn_e4')     # e4:       [batch_size, 64,  64,  512]
-            e5 = batch_norm(conv2d(lrelu(e4), self.gen_dim*8, name='g_e5_conv'), 'g_bn_e5')     # e5:       [batch_size, 32,  32,  512]
-            e6 = batch_norm(conv2d(lrelu(e5), self.gen_dim*8, name='g_e6_conv'), 'g_bn_e6')     # e6:       [batch_size, 16,  16,  512]
-            e7 = batch_norm(conv2d(lrelu(e6), self.gen_dim*8, name='g_e7_conv'), 'g_bn_e7')     # e7:       [batch_size, 8,   8,   512]
-            e8 = batch_norm(conv2d(lrelu(e7), self.gen_dim*8, name='g_e8_conv'), 'g_bn_e8')     # e8:       [batch_size, 4,   4,   512]
+            e2 = batch_norm(conv2d(lrelu(e1), self.gen_dim*2, name='g_e2_conv'), name='g_bn_e2')     # e2:       [batch_size, 256, 256, 128]
+            e3 = batch_norm(conv2d(lrelu(e2), self.gen_dim*4, name='g_e3_conv'), name='g_bn_e3')     # e3:       [batch_size, 128, 128, 256]
+            e4 = batch_norm(conv2d(lrelu(e3), self.gen_dim*8, name='g_e4_conv'), name='g_bn_e4')     # e4:       [batch_size, 64,  64,  512]
+            e5 = batch_norm(conv2d(lrelu(e4), self.gen_dim*8, name='g_e5_conv'), name='g_bn_e5')     # e5:       [batch_size, 32,  32,  512]
+            e6 = batch_norm(conv2d(lrelu(e5), self.gen_dim*8, name='g_e6_conv'), name='g_bn_e6')     # e6:       [batch_size, 16,  16,  512]
+            e7 = batch_norm(conv2d(lrelu(e6), self.gen_dim*8, name='g_e7_conv'), name='g_bn_e7')     # e7:       [batch_size, 8,   8,   512]
+            e8 = batch_norm(conv2d(lrelu(e7), self.gen_dim*8, name='g_e8_conv'), name='g_bn_e8')     # e8:       [batch_size, 4,   4,   512]
                                                                                                 ## TODO:    This can/should? be batch_size, 1,   1,   512]
 
             # Decoder
             d1 = tf.nn.dropout(batch_norm(deconv2d(tf.nn.relu(e8),
-                                                   [None, h128, w128, self.gen_dim*8],
-                                                   name='g_d1'), 'g_bn_d1'), 0.5)
+                                                   [self._config.batch_size, h128, w128, self.gen_dim*8],
+                                                   name='g_d1'), name='g_bn_d1'), 0.5)
             d1 = tf.concat([d1, e7], 3)                                                         # d1:       [batch_size, 8,   8,   512+512]
             d2 = tf.nn.dropout(batch_norm(deconv2d(tf.nn.relu(d1),
-                                                   [None, h64, w64, self.gen_dim*8],
-                                                   name='g_d2'), 'g_bn_d2'), 0.5)
+                                                   [self._config.batch_size, h64, w64, self.gen_dim*8],
+                                                   name='g_d2'), name='g_bn_d2'), 0.5)
             d2 = tf.concat([d2, e6], 3)                                                         # d2:       [batch_size, 16,   16,   512+512]
             d3 = tf.nn.dropout(batch_norm(deconv2d(tf.nn.relu(d2),
-                                                   [None, h32, w32, self.gen_dim*8],
-                                                   name='g_d3'), 'g_bn_d3'), 0.5)
+                                                   [self._config.batch_size, h32, w32, self.gen_dim*8],
+                                                   name='g_d3'), name='g_bn_d3'), 0.5)
             d3 = tf.concat([d3, e5], 3)                                                         # d3:       [batch_size, 32,   32,   512+512]
             d4 = tf.nn.dropout(batch_norm(deconv2d(tf.nn.relu(d3),
-                                                   [None, h16, w16, self.gen_dim*8],
-                                                   name='g_d4'), 'g_bn_d4'), 0.5)
+                                                   [self._config.batch_size, h16, w16, self.gen_dim*8],
+                                                   name='g_d4'), name='g_bn_d4'), 0.5)
             d4 = tf.concat([d4, e4], 3)                                                         # d4:       [batch_size, 64,   64,   512+512]
             d5 = batch_norm(deconv2d(tf.nn.relu(d4),
-                                     [None, h8, w8, self.gen_dim*4],
-                                     name='g_d5'), 'g_bn_d5')
+                                     [self._config.batch_size, h8, w8, self.gen_dim*4],
+                                     name='g_d5'), name='g_bn_d5')
             d5 = tf.concat([d5, e3], 3)                                                         # d5:       [batch_size, 128,   128,   256+256]
             d6 = batch_norm(deconv2d(tf.nn.relu(d5),
-                                     [None, h4, w4, self.gen_dim*2],
-                                     name='g_d6'), 'g_bn_d6')
+                                     [self._config.batch_size, h4, w4, self.gen_dim*2],
+                                     name='g_d6'), name='g_bn_d6')
             d6 = tf.concat([d6, e2], 3)                                                         # d6:       [batch_size, 256,   256,   128+128]
             d7 = batch_norm(deconv2d(tf.nn.relu(d6),
-                                     [None, h2, w2, self.gen_dim],
-                                     name='g_d7'), 'g_bn_d7')
+                                     [self._config.batch_size, h2, w2, self.gen_dim],
+                                     name='g_d7'), name='g_bn_d7')
             d7 = tf.concat([d7, e1], 3)                                                         # d7:       [batch_size, 512,   512,   64+64]
-            d8 = deconv2d(tf.nn.relu(d7), [None, o_h, o_w, o_c], name='g_d8')                   # d8:       [batch_size, 1024,  1024,  1]
+            d8 = deconv2d(tf.nn.relu(d7), [self._config.batch_size, o_h, o_w, o_c], name='g_d8')                   # d8:       [batch_size, 1024,  1024,  1]
             return tf.nn.tanh(d8)
 
         
