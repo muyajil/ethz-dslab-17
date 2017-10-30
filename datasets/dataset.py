@@ -10,6 +10,7 @@ class DatasetConfig(object):
     num_datapoints = None
     input_dimensions = None
     batch_size = None
+    validation = False
 
     def __init__(self, augmentation_multiplicator):
         self.augmentation_multiplicator = augmentation_multiplicator
@@ -43,7 +44,8 @@ class Dataset(object):
         """
         
         self._current_batch = 0
-        rand.shuffle(self._indices)
+        if not self._config.validation:
+            rand.shuffle(self._indices)
         
     def _load_function(self, file_name):
         """Load a file into a tensor
@@ -166,12 +168,11 @@ class Dataset(object):
                     data_point = self._load_function(file_name)
                 except ValueError:
                     raise ValueError(file_name + " could not be loaded!")
-
-                processed_data_point = [data_point]
+                cropped_data_point = self._crop_input(data_point)
+                processed_data_point = [cropped_data_point]
                 for fun in self._preprocess_pipeline():
                     processed_data_point = map(fun, processed_data_point)
-                cropped_data_point = self._crop_input(list(processed_data_point)[data_point_version])
-                batch.append(cropped_data_point)
+                batch.append(list(processed_data_point)[data_point_version])
             
             if len(batch) < self._config.batch_size:
                 self._pad_batch(batch)
@@ -208,6 +209,7 @@ class Dataset(object):
 
         validation_config = copy.deepcopy(self._config)
         validation_config.num_datapoints = self._config.num_datapoints - num_datapoints_train
+        validation_config.validation = True
 
         training_indices = self._indices[:num_datapoints_train]
         validation_indices = self._indices[num_datapoints_train:]
