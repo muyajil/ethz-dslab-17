@@ -62,7 +62,7 @@ class Pix2pix(AbstractTensorflowModel):
                     self.writer.add_summary(summary_str, counter)
                     
                     # Generator
-                    _, summary_str = sess.run([G_optimizer, self.D_summary],
+                    _, summary_str = sess.run([G_optimizer, self.G_summary],
                                                feed_dict={ self.real_input: batch })
                     self.writer.add_summary(summary_str, counter)
                     counter+=1
