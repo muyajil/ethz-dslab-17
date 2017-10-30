@@ -14,6 +14,7 @@ class Hirise(Dataset):
         file = os.path.join(self._config.base_path, file_name)
         pdsimage = PDS3Image.open(file)
         height, width = pdsimage.image.shape
+        # plt.imshow(pdsimage.image, cmap='gray')
         return np.reshape(pdsimage.image, (height, width, 1))
 
     def _crop_input(self, datapoint):

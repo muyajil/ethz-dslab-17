@@ -106,7 +106,10 @@ class Pix2pix(object):
             validation_set: Data on which to evaluate the model.
 
         """
-        with tf.Session() as sess:
+        config = tf.ConfigProto()
+        config.gpu_options.allow_growth = True
+
+        with tf.Session(config=config) as sess:
 
             # Optimizers
             dis_optimizer = tf.train.AdamOptimizer(self._config.learning_rate, beta1=self._config.momentum).minimize(
