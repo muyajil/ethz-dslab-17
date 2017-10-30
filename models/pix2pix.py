@@ -164,7 +164,7 @@ class Pix2pix(object):
                     if train_step % 500 == 0:
                         self.save(sess, train_step)
 
-                    if train_step % 2 == 0:
+                    if train_step % 100 == 0:
                         images_summary, loss_summary = self.validate(sess, validation_set)
                         writer.add_summary(images_summary, global_step=train_step)
                         writer.add_summary(loss_summary, global_step=train_step)
