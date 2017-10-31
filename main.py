@@ -2,7 +2,7 @@ import argparse
 import os
 import threading
 from pydoc import locate
-from models.abstract_model import ModelConfig
+from models.pix2pix import *
 from utils import Dimension
 
 model = None
@@ -35,8 +35,8 @@ def run_model(run_mode, epochs, split_ratio):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser("Pass the arguments for the model run")
-    parser.add_argument("model_name", metavar="model", type=str, 
-                        help="The name of the models that should be trained")
+    # parser.add_argument("model_name", metavar="model", type=str,
+    #                     help="The name of the models that should be trained")
     parser.add_argument("dataset_name", metavar="dataset", type=str,
                         help="The name of the dataset that should be used")
     parser.add_argument("run_mode", metavar="run_mode", type=str, 
@@ -60,6 +60,8 @@ if __name__ == "__main__":
                         help="Where to save the logs to")
     parser.add_argument("pythonpath", metavar="pythonpath", type=str,
                         help="Path to your python.exe")
+    parser.add_argument("--restore_path", metavar="restore_path", type=str,
+                        help="Restore path")
 
     args = parser.parse_args()
 
@@ -72,10 +74,11 @@ if __name__ == "__main__":
     dataset_config = getattr(dataset_module, "config")
     dataset.initialize(dataset_config, args.base_path, input_dimensions, args.batch_size)
 
-    model_module = locate("models." + args.model_name)
-    model = getattr(model_module, "model")
-    model_config = ModelConfig(args.batch_size, input_dimensions, args.log_dir)
-    model.initialize(model_config)
+    model_config = Config(args.batch_size, input_dimensions, args.log_dir)
+    if args.restore_path != '':
+        model = Pix2pix(config=model_config, restore_path=args.restore_path)
+    else:
+        model = Pix2pix(config=model_config)
 
     t = threading.Thread(target=run_tensorboard, args=([args.log_dir, args.pythonpath]))
     t.start()
