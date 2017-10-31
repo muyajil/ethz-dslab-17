@@ -129,6 +129,9 @@ class Pix2pix(object):
                 [self._ops.dis_fake_pred_histo, self._ops.dis_fake_loss_summary,
                  self._ops.gen_loss_summary, self._ops.gen_l1_loss_summary])
 
+            images_summary = tf.Summary()
+            avg_val_loss_summary = tf.Summary()
+
             writer = tf.summary.FileWriter(self._config.log_dir, sess.graph)
 
             train_step = 1
@@ -166,13 +169,13 @@ class Pix2pix(object):
                     if train_step % 500 == 0:
                         self.save(sess, train_step)
 
-                    if train_step % 100 == 0:
-                        images_summary, loss_summary = self.validate(sess, validation_set)
+                    if train_step % 50 == 0:
+                        images_summary, loss_summary = self.validate(sess, validation_set, images_summary, avg_val_loss_summary)
                         writer.add_summary(images_summary, global_step=train_step)
                         writer.add_summary(loss_summary, global_step=train_step)
                     train_step = train_step + 1
 
-    def validate(self, sess, validation_set):
+    def validate(self, sess, validation_set, images_summary, loss_summary):
         print("Validating...")
         validation_losses = []
         batch_images = []
@@ -183,13 +186,12 @@ class Pix2pix(object):
         single_images = []
         for image in batch_images:
             single_images.extend(tf.split(image, self._config.batch_size))
-        images_summary = tf.Summary()
+
         for image_id, image in enumerate(single_images):
             rescaled_image = tf.squeeze(tf.cast(image * 255, dtype=tf.uint8), axis=0)
             encoded_image = tf.image.encode_png(rescaled_image).eval()
             images_summary.value.add(tag='validation_images/' + str(image_id), image=tf.Summary.Image(encoded_image_string=encoded_image))
 
-        loss_summary = tf.Summary()
         loss_summary.value.add(tag='avg_validation_loss', simple_value=avg_val_loss)
 
         return images_summary, loss_summary
