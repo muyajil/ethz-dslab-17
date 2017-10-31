@@ -169,16 +169,19 @@ class Pix2pix(object):
                     if train_step % 500 == 0:
                         self.save(sess, train_step)
 
-                    if train_step % 50 == 0:
+                    if train_step % 100 == 0:
                         images_summary, loss_summary = self.validate(sess, validation_set, images_summary, avg_val_loss_summary)
                         writer.add_summary(images_summary, global_step=train_step)
                         writer.add_summary(loss_summary, global_step=train_step)
                     train_step = train_step + 1
+            writer.close()
 
     def validate(self, sess, validation_set, images_summary, loss_summary):
         print("Validating...")
         validation_losses = []
         batch_images = []
+        images_summary.value._values = [] # TODO: Probably need to move summary back inside
+        loss_summary.value._values = [] # TODO: Probably need to move summary back inside
         for batch in validation_set.batch_iter(stop_after_epoch=True):
             batch_images.append(sess.run([self._ops.concatenated_images], feed_dict={self._ops.input_image: batch})[0])
             validation_losses.append(self._ops.gen_loss.eval({self._ops.input_image: batch}))
