@@ -2,6 +2,8 @@ import os
 from six.moves import xrange
 import time
 from models.tf_utils import *
+import numpy as np
+from scipy.misc import imsave
 
 
 class Config(object):
@@ -129,9 +131,6 @@ class Pix2pix(object):
                 [self._ops.dis_fake_pred_histo, self._ops.dis_fake_loss_summary,
                  self._ops.gen_loss_summary, self._ops.gen_l1_loss_summary])
 
-            images_summary = tf.Summary()
-            avg_val_loss_summary = tf.Summary()
-
             writer = tf.summary.FileWriter(self._config.log_dir, sess.graph)
 
             train_step = 1
@@ -176,24 +175,24 @@ class Pix2pix(object):
                     train_step = train_step + 1
             writer.close()
 
-    def validate(self, sess, validation_set, images_summary, loss_summary):
+    def validate(self, sess, validation_set):
         print("Validating...")
+        images_summary = tf.Summary()
+        loss_summary = tf.Summary()
         validation_losses = []
         batch_images = []
-        images_summary.value._values = [] # TODO: Probably need to move summary back inside
-        loss_summary.value._values = [] # TODO: Probably need to move summary back inside
         for batch in validation_set.batch_iter(stop_after_epoch=True):
             batch_images.append(sess.run([self._ops.concatenated_images], feed_dict={self._ops.input_image: batch})[0])
             validation_losses.append(self._ops.gen_loss.eval({self._ops.input_image: batch}))
         avg_val_loss = sum(validation_losses) / len(validation_losses)
         single_images = []
         for image in batch_images:
-            single_images.extend(tf.split(image, self._config.batch_size))
+            single_images.extend(np.split(image, self._config.batch_size))
 
         for image_id, image in enumerate(single_images):
-            rescaled_image = tf.squeeze(tf.cast(image * 255, dtype=tf.uint8), axis=0)
-            encoded_image = tf.image.encode_png(rescaled_image).eval()
-            images_summary.value.add(tag='validation_images/' + str(image_id), image=tf.Summary.Image(encoded_image_string=encoded_image))
+            rescaled_image = np.squeeze((image * 255).astype(dtype=np.uint8), axis=0)
+            encoded_image = BytesIO()
+            images_summary.value.add(tag='validation_images/' + str(image_id), image=tf.Summary.Image(encoded_image_string=imsave(encoded_image, rescaled_image).getbuffer()))
 
         loss_summary.value.add(tag='avg_validation_loss', simple_value=avg_val_loss)
 
