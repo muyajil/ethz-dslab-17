@@ -4,3 +4,4 @@ data/*
 *.h5
 logs/*
 __pycache__/*
+images/*

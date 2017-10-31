@@ -4,6 +4,7 @@ import time
 from models.tf_utils import *
 import numpy as np
 from scipy.misc import imsave
+from io import BytesIO
 
 
 class Config(object):
@@ -169,13 +170,13 @@ class Pix2pix(object):
                         self.save(sess, train_step)
 
                     if train_step % 100 == 0:
-                        images_summary, loss_summary = self.validate(sess, validation_set, images_summary, avg_val_loss_summary)
+                        images_summary, loss_summary = self.validate(sess, validation_set, train_step)
                         writer.add_summary(images_summary, global_step=train_step)
                         writer.add_summary(loss_summary, global_step=train_step)
                     train_step = train_step + 1
             writer.close()
 
-    def validate(self, sess, validation_set):
+    def validate(self, sess, validation_set, train_step):
         print("Validating...")
         images_summary = tf.Summary()
         loss_summary = tf.Summary()
@@ -190,9 +191,10 @@ class Pix2pix(object):
             single_images.extend(np.split(image, self._config.batch_size))
 
         for image_id, image in enumerate(single_images):
-            rescaled_image = np.squeeze((image * 255).astype(dtype=np.uint8), axis=0)
-            encoded_image = BytesIO()
-            images_summary.value.add(tag='validation_images/' + str(image_id), image=tf.Summary.Image(encoded_image_string=imsave(encoded_image, rescaled_image).getbuffer()))
+            rescaled_image = np.squeeze((image * 255).astype(dtype=np.uint8))
+            imsave('images/validation_image_{}_{}.png'.format(image_id, train_step), rescaled_image, format='png')
+            encoded_image = open('images/validation_image_{}_{}.png'.format(image_id, train_step), 'rb').read()
+            images_summary.value.add(tag='validation_images/' + str(image_id), image=tf.Summary.Image(encoded_image_string=encoded_image))
 
         loss_summary.value.add(tag='avg_validation_loss', simple_value=avg_val_loss)
 
