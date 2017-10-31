@@ -37,6 +37,8 @@ class Config(object):
         self.momentum = momentum
 
 # TODO: Add object for summaries
+# TODO: Make restore work
+
 class Pix2PixOps(object):
     input_image = None
 
@@ -80,7 +82,7 @@ class Pix2pix(object):
             config.log_dir = restore_path
             self._restore = True
         else:
-            config.log_dir = str(os.path.join(config.log_dir, self._model_name + "_" + str(int(time.time()))))
+            config.log_dir = str(os.path.join(config.log_dir, str(int(time.time()))))
         self._config = config
         self._setup_model()
 

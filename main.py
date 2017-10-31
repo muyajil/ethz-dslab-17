@@ -60,6 +60,8 @@ if __name__ == "__main__":
                         help="Where to save the logs to")
     parser.add_argument("pythonpath", metavar="pythonpath", type=str,
                         help="Path to your python.exe")
+    parser.add_argument("--restore_path", metavar="restore_path", type=str,
+                        help="Restore path")
 
     args = parser.parse_args()
 
@@ -73,7 +75,10 @@ if __name__ == "__main__":
     dataset.initialize(dataset_config, args.base_path, input_dimensions, args.batch_size)
 
     model_config = Config(args.batch_size, input_dimensions, args.log_dir)
-    model = Pix2pix(config=model_config)
+    if args.restore_path != '':
+        model = Pix2pix(config=model_config, restore_path=args.restore_path)
+    else:
+        model = Pix2pix(config=model_config)
 
     t = threading.Thread(target=run_tensorboard, args=([args.log_dir, args.pythonpath]))
     t.start()
