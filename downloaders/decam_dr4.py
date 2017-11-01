@@ -40,6 +40,8 @@ def download_images(download_location, min_images):
                     ftp.retrbinary('RETR %s' % file, handle.write)
                     print("Downloaded image: {}".format(file))
                     images_downloaded += 1
+            ftp.cwd("..")
+        ftp.cwd("..")
 
 
 if __name__ == "__main__":
