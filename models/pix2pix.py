@@ -47,18 +47,25 @@ class Config(object):
 class Pix2PixOps(object):
     input_image = None
 
+    # Losses
     dis_loss = None
     dis_fake_loss = None
     dis_real_loss = None
     gen_loss = None
+    
+    # Other metrics
+    gen_psnr = None
 
+    # Variables
     dis_vars = None
     gen_vars = None
 
+    # Tensorboard summaries
     dis_loss_summary = None
     dis_real_loss_summary = None
     dis_fake_loss_summary = None
     gen_loss_summary = None
+    gen_psnr_summary = None
     concatenated_images = None
     dis_real_pred_histo = None
     dis_fake_pred_histo = None
@@ -125,7 +132,7 @@ class Pix2pix(object):
             # Optimizer for Generator
             gen_optimizer = tf.train.AdamOptimizer(self._config.learning_rate, beta1=self._config.momentum)
             gen_grads_and_vars = gen_optimizer.compute_gradients(self._ops.dis_loss, var_list=self._ops.dis_vars)
-            gen_clipped_grads_and_vars = [(clip_by_value(grad, self._config.gen_grad_max, self._config.gen_grad_min, name="gen_clip"), var) for grad, var in gen_grads_and_vars]
+            gen_clipped_grads_and_vars = [(clip_by_value(grad, self._config.gen_grad_max, self._config.gen_grad_min, name="g_clip"), var) for grad, var in gen_grads_and_vars]
             gen_optimizer.apply_gradients(gen_clipped_grads_and_vars)
                 
             # Initialization
@@ -138,7 +145,8 @@ class Pix2pix(object):
 
             gen_summary = tf.summary.merge(
                 [self._ops.dis_fake_pred_histo, self._ops.dis_fake_loss_summary,
-                 self._ops.gen_loss_summary, self._ops.gen_l1_loss_summary])
+                 self._ops.gen_loss_summary, self._ops.gen_l1_loss_summary,
+                 self._ops.gen_psnr_summary])
 
             writer = tf.summary.FileWriter(self._config.log_dir, sess.graph)
 
@@ -177,9 +185,10 @@ class Pix2pix(object):
                         self.save(sess, train_step)
 
                     if train_step % 100 == 0:
-                        images_summary, loss_summary = self.validate(sess, validation_set, train_step)
+                        images_summary, loss_summary, psnr_summary = self.validate(sess, validation_set, train_step)
                         writer.add_summary(images_summary, global_step=train_step)
                         writer.add_summary(loss_summary, global_step=train_step)
+                        writer.add_summary(psnr_summary, global_step=train_step)
                     train_step = train_step + 1
             writer.close()
 
@@ -187,12 +196,16 @@ class Pix2pix(object):
         print("Validating...")
         images_summary = tf.Summary()
         loss_summary = tf.Summary()
+        psnr_summary = tf.Summary()
         validation_losses = []
+        validation_pnsrs = []
         batch_images = []
         for batch in validation_set.batch_iter(stop_after_epoch=True):
             batch_images.append(sess.run([self._ops.concatenated_images], feed_dict={self._ops.input_image: batch})[0])
             validation_losses.append(self._ops.gen_loss.eval({self._ops.input_image: batch}))
+            validation_pnsrs.append(self._ops.gen_psnr.eval({self._ops.input_image: batch}))
         avg_val_loss = sum(validation_losses) / len(validation_losses)
+        avg_val_psnr = sum(validation_pnsrs) / len(validation_pnsrs)
         single_images = []
         for image in batch_images:
             single_images.extend(np.split(image, self._config.batch_size))
@@ -202,9 +215,10 @@ class Pix2pix(object):
             encoded_image = open('{}/validation_image_{}_{}.png'.format(self._config.log_dir,image_id, train_step), 'rb').read()
             images_summary.value.add(tag='validation_images/' + str(image_id), image=tf.Summary.Image(encoded_image_string=encoded_image))
 
-        loss_summary.value.add(tag='avg_validation_loss', simple_value=avg_val_loss)
+        loss_summary.value.add(tag='avg_val_gen_loss', simple_value=avg_val_loss)
+        psnr_summary.value.add(tag)'avg_val_gen_psnr', simple_value=avg_val_psnr)
 
-        return images_summary, loss_summary
+        return images_summary, loss_summary, psnr_summary
 
     def _setup_model(self):
         """ Creates a new pix2pix tensorflow model.
@@ -230,8 +244,12 @@ class Pix2pix(object):
             tf.reduce_mean(
                 tf.nn.sigmoid_cross_entropy_with_logits(logits=dis_fake_logits, labels=tf.ones_like(dis_fake_pred))) \
             + self._config.l1_lambda * gen_l1_loss
+            
+        # Metrics
+        self._ops.gen_psnr = psnr(self._ops.input_image, generator_output)
 
         # Tensorboard
+        self._ops.gen_psnr_summary = tf.summary.scalar("gen_psnr", self._ops.gen_psnr)
         self._ops.dis_loss_summary = tf.summary.scalar("dis_loss", self._ops.dis_loss)
         self._ops.gen_loss_summary = tf.summary.scalar("gen_loss", self._ops.gen_loss)
         self._ops.dis_real_loss_summary = tf.summary.scalar("dis_real_loss", self._ops.dis_real_loss)
