@@ -90,7 +90,7 @@ class Pix2pix(object):
         self._setup_model()
 
     def save(self, sess, step):
-        self._saver.save(sess, os.path.join(self._config.log_dir, "checkpoint"), global_step=step)
+        self._saver.save(sess, os.path.join(self._config.log_dir, "model.ckpt"), global_step=step)
 
     def restore(self, sess):
         print("Reading checkpoint...")
