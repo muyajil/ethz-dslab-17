@@ -90,7 +90,7 @@ class Pix2pix(object):
         self._setup_model()
 
     def save(self, sess, step):
-        self._saver.save(sess, self._config.log_dir, global_step=step)
+        self._saver.save(sess, "{}/{}".format(self._config.log_dir, "model.ckpt"), global_step=step)
 
     def restore(self, sess):
         print("Reading checkpoint...")
@@ -149,10 +149,9 @@ class Pix2pix(object):
                 for batch_num, batch in enumerate(training_set.batch_iter(stop_after_epoch=True)):
 
                     # Discriminator
-                    if batch_num % 2 == 0:
-                        _, summary_str = sess.run([dis_optimizer, dis_summary],
-                                                  feed_dict={self._ops.input_image: batch})
-                        writer.add_summary(summary_str, train_step)
+                    _, summary_str = sess.run([dis_optimizer, dis_summary],
+                                              feed_dict={self._ops.input_image: batch})
+                    writer.add_summary(summary_str, train_step)
 
                     # Generator
                     _, summary_str = sess.run([gen_optimizer, gen_summary],
