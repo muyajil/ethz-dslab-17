@@ -81,11 +81,13 @@ def linear(input_, output_size, scope=None, stddev=0.02, bias_start=0.0, with_w=
         else:
             return tf.matmul(input_, matrix) + bias
 
+
 def psnr(original, reconstructed, peak=1.0, scope=None):
     mse = tf.metrics.mean_squared_error(original, reconstructed, name=scope)
     rmse = tf.sqrt(mse)
-    return tf.scalar_mul(tf.constant(20), log10(tf.divide(tf.constant(peak),rmse)))
-    
+    return tf.scalar_mul(tf.constant(20.0), log10(tf.divide(tf.constant(peak), rmse)))
+
+
 def log10(x):
     numerator = tf.log(x)
     denominator = tf.log(tf.constant(10, dtype=numerator.dtype))
