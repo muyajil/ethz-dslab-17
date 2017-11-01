@@ -9,7 +9,7 @@ import hashlib
 class Hirise(Dataset):
 
     def random_square(self, image):
-        randints = np.random.random_integers(0, 512, 4)
+        randints = np.random.random_integers(0, self._config.input_dimensions.width, 4)
         left = min(randints[:2])
         right = max(randints[:2])
         top = max(randints[2:])
