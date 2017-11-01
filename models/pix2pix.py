@@ -309,8 +309,8 @@ class Pix2pix(object):
             d3:       [batch_size, 32,   32,   512+512]
             d4:       [batch_size, 64,   64,   512+512]
             d5:       [batch_size, 128,   128,   256+256]
-            d6:       [batch_size, 256,   256,   128+128]
-            d7:       [batch_size, 512,   512,   64+64]
+            d6:       [batch_size, 256,   256,   128]
+            d7:       [batch_size, 512,   512,   64]
             d8:       [batch_size, 1024,  1024,  1]
             """
 
@@ -338,10 +338,10 @@ class Pix2pix(object):
             d6 = batch_norm(deconv2d(tf.nn.relu(d5),
                                      [self._config.batch_size, h4, w4, self.gen_dim * 2],
                                      name='g_d6'), name='g_bn_d6')
-            d6 = tf.concat([d6, e2], 3)
+            # REMOVE U-NET LINK: d6 = tf.concat([d6, e2], 3)
             d7 = batch_norm(deconv2d(tf.nn.relu(d6),
                                      [self._config.batch_size, h2, w2, self.gen_dim],
                                      name='g_d7'), name='g_bn_d7')
-            d7 = tf.concat([d7, e1], 3)
+            # REMOVE U-NET LINK: d7 = tf.concat([d7, e1], 3)
             d8 = deconv2d(tf.nn.relu(d7), [self._config.batch_size, o_h, o_w, o_c], name='g_d8')
             return tf.nn.tanh(d8)
