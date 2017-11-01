@@ -191,8 +191,7 @@ class Pix2pix(object):
             single_images.extend(np.split(image, self._config.batch_size))
 
         for image_id, image in enumerate(single_images):
-            rescaled_image = np.squeeze((image * 255).astype(dtype=np.uint8))
-            imsave('images/validation_image_{}_{}.png'.format(image_id, train_step), rescaled_image, format='png')
+            imsave('images/validation_image_{}_{}.png'.format(image_id, train_step), image, format='png')
             encoded_image = open('images/validation_image_{}_{}.png'.format(image_id, train_step), 'rb').read()
             images_summary.value.add(tag='validation_images/' + str(image_id), image=tf.Summary.Image(encoded_image_string=encoded_image))
 
