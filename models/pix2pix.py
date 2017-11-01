@@ -263,7 +263,7 @@ class Pix2pix(object):
             h3 = lrelu(batch_norm(conv2d(h2, self._config.dis_conv1_filters * 8, stride_height=1, stride_width=1,
                                          name='d_h3_conv'), name='d_bn3'))
             h4 = linear(tf.reshape(h3, [self._config.batch_size, -1]), 1, scope='d_h3_lin')
-            return tf.nn.sigmoid(h4), h4
+            return tf.nn.tanh(h4), h4
 
     def _generator(self, image):
         """
