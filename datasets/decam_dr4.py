@@ -1,5 +1,4 @@
 from datasets.dataset import Dataset
-from planetaryimage.pds3image import PDS3Image
 from astropy.io import fits
 from datasets.dataset import DatasetConfig
 import os
@@ -7,21 +6,10 @@ import numpy as np
 import hashlib
 
 
-class Hirise(Dataset):
-
-    def random_square(self, image):
-        randints = np.random.random_integers(0, self._config.input_dimensions.width, 4)
-        left = min(randints[:2])
-        right = max(randints[:2])
-        top = max(randints[2:])
-        bottom = min(randints[2:])
-        for i in range(left, right):
-            for j in range(bottom, top):
-                image[i, j, 0] = 1
-        return image
+class Decam(Dataset):
 
     def _preprocess_pipeline(self):
-        return []
+        return [lambda x: (x / 2**15) - 1, lambda x: -x]
 
     def set_seed(self, file_name):
         hash_string = hashlib.md5(file_name.encode()).hexdigest()
@@ -31,11 +19,10 @@ class Hirise(Dataset):
     def _load_function(self, file_name):
         self.set_seed(file_name)
         file = os.path.join(self._config.base_path, file_name)
-        image_data = fits.getdata(file)
+        image_data = fits.getdata(file, ignore_missing_end=True)
         height, width = image_data.shape
-        normalized_image = (np.log(image_data) / 15) - 1
         # plt.imshow(pdsimage.image, cmap='gray')
-        return np.reshape(normalized_image, (height, width, 1))
+        return np.reshape(image_data, (height, width, 1))
 
     def _crop_input(self, datapoint):
         height, width, depth = datapoint.shape
@@ -51,5 +38,5 @@ class Hirise(Dataset):
 
 
 config = DatasetConfig(augmentation_multiplicator=1)
-dataset = Hirise()
+dataset = Decam()
 

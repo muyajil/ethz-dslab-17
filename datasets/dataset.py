@@ -55,7 +55,6 @@ class Dataset(object):
         
         Returns:
             A tensor containing the file in the desired form.
-            Images should already be normalized
         """
         raise NotImplementedError()
         
@@ -167,7 +166,8 @@ class Dataset(object):
 
                 try:
                     data_point = self._load_function(file_name)
-                except ValueError:
+                except (TypeError, ValueError, OSError) as e:
+                    print(e)
                     raise ValueError(file_name + " could not be loaded!")
                 cropped_data_point = self._crop_input(data_point)
                 processed_data_point = [cropped_data_point]

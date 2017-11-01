@@ -1,4 +1,6 @@
-1509481547: 512x512, lambda=100, epochs=1, scaling=[0,1]
-1509514947: 256x256, lambda=10, epochs=1, scaling=[0,1]
-1509522011: 256x256, lambda=10, epochs=5, scaling=[0,1]
-...: 512x512, lambda=10, epochs=2, dataset=decam, scaling=[-1,1], train discriminator on each step
+Run         Input Dim   Lambda      Epochs      Scaling     Dataset     Notes
+1509481547  512x512     100         1           [0,1]       hirise
+1509514947  256x256     10          1           [0,1]       hirise
+1509522011  256x256     10          5           [0,1]       hirise
+1509558072  512x512     10          10          [-1,1]      decam_dr4   train discriminator on each step, small dataset, overfit
+1509567856  256x256     10          10          [-1,1]      decam_dr4   train discriminator on each step, small dataset, overfit, pixels flipped, without log
