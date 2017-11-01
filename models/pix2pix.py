@@ -191,8 +191,8 @@ class Pix2pix(object):
             single_images.extend(np.split(image, self._config.batch_size))
 
         for image_id, image in enumerate(single_images):
-            imsave('images/validation_image_{}_{}.png'.format(image_id, train_step), image, format='png')
-            encoded_image = open('images/validation_image_{}_{}.png'.format(image_id, train_step), 'rb').read()
+            imsave('{}/validation_image_{}_{}.png'.format(self._config.log_dir, image_id, train_step), image, format='png')
+            encoded_image = open('{}/validation_image_{}_{}.png'.format(self._config.log_dir,image_id, train_step), 'rb').read()
             images_summary.value.add(tag='validation_images/' + str(image_id), image=tf.Summary.Image(encoded_image_string=encoded_image))
 
         loss_summary.value.add(tag='avg_validation_loss', simple_value=avg_val_loss)
