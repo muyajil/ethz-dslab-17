@@ -173,6 +173,7 @@ class Pix2pix(object):
                         writer.add_summary(images_summary, global_step=train_step)
                         writer.add_summary(loss_summary, global_step=train_step)
                     train_step = train_step + 1
+                self.save(sess, train_step)
             writer.close()
 
     def validate(self, sess, validation_set, train_step):
