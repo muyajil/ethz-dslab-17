@@ -1,4 +1,4 @@
-D:\repositories\data-science-lab\logs\pix2pix\1509481547: 512x512, lambda=100, epochs=1, scaling=[0,1]
-D:\repositories\data-science-lab\logs\pix2pix\1509514947: 256x256, lambda=10, epochs=1, scaling=[0,1]
-D:\repositories\data-science-lab\logs\pix2pix\1509522011: 256x256, lambda=10, epochs=5, scaling=[0,1]
-...: 512x512, lambda=10, epochs=2, dataset=decam, scaling=[-1,1]
+1509481547: 512x512, lambda=100, epochs=1, scaling=[0,1]
+1509514947: 256x256, lambda=10, epochs=1, scaling=[0,1]
+1509522011: 256x256, lambda=10, epochs=5, scaling=[0,1]
+...: 512x512, lambda=10, epochs=2, dataset=decam, scaling=[-1,1], train discriminator on each step
