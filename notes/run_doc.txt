@@ -9,4 +9,6 @@ Run         Input Dim   Lambda      Epochs      Scaling     Dataset     Notes
 1509574270  256x256     10          20          [-1,1]      decam_dr4   bottlenecked, gradient clipped at 100000, train discriminator every second step > again the same, aborted
 1509574582  256x256     10          20          [-1,1]      decam_dr4   bottlenecked, gradient clipped at 100000, pretrain generator for 2 epochs > again the same, aborted
 1509574582  256x256     100         20          [-1,1]      decam_dr4   bottlenecked, gradient clipped at 100000, increase lambda > again the same, aborted
+xxxxxxxxxx  256x256     20          10          [-1,1]      decam_dr4   train discriminator on each step, small dataset, overfit, pixels flipped, without log
+
 xxxxxxxxxx
