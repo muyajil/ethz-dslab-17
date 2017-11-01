@@ -20,6 +20,8 @@ class Config(object):
     dis_conv1_filters = None
     learning_rate = None
     momentum = None
+    gen_grad_max = 100000 # TODO: find suitbale value for this
+    gen_grad_min = -gen_grad_max
 
     def __init__(self,
                  batch_size,
@@ -111,15 +113,21 @@ class Pix2pix(object):
             validation_set: Data on which to evaluate the model.
 
         """
+        
+        clip_by_value(grad, self._config.gen_grad_max, self._config.gen_grad_min, name="gen_clip")
 
         with tf.Session() as sess:
 
-            # Optimizers
+            # Optimizer for Discriminator
             dis_optimizer = tf.train.AdamOptimizer(self._config.learning_rate, beta1=self._config.momentum).minimize(
                 self._ops.dis_loss, var_list=self._ops.dis_vars)
-            gen_optimizer = tf.train.AdamOptimizer(self._config.learning_rate, beta1=self._config.momentum).minimize(
-                self._ops.gen_loss, var_list=self._ops.gen_vars)
-
+                
+            # Optimizer for Generator
+            gen_optimizer = tf.train.AdamOptimizer(self._config.learning_rate, beta1=self._config.momentum)
+            gen_grads_and_vars = gen_optimizer.compute_gradients(self._ops.dis_loss, var_list=self._ops.dis_vars)
+            gen_clipped_grads_and_vars = [(clip_by_value(grad, self._config.gen_grad_max, self._config.gen_grad_min, name="gen_clip"), var) for grad, var in gen_grads_and_vars]
+            gen_optimizer.apply_gradients(gen_clipped_grads_and_vars)
+                
             # Initialization
             init_op = tf.global_variables_initializer()
             sess.run(init_op)
