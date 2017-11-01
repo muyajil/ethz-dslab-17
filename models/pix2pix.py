@@ -194,7 +194,7 @@ class Pix2pix(object):
             os.makedirs('{}/images'.format(self._config.log_dir))
 
         for image_id, image in enumerate(single_images):
-            imsave('{}/images/validation_image_{}_{}.png'.format(self._config.log_dir, image_id, train_step), image, format='png')
+            imsave('{}/images/validation_image_{}_{}.png'.format(self._config.log_dir, image_id, train_step), np.squeeze(image), format='png')
             encoded_image = open('{}/images/validation_image_{}_{}.png'.format(self._config.log_dir, image_id, train_step), 'rb').read()
             images_summary.value.add(tag='validation_images/' + str(image_id), image=tf.Summary.Image(encoded_image_string=encoded_image))
 
