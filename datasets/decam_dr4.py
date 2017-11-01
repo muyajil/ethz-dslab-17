@@ -21,7 +21,7 @@ class Hirise(Dataset):
         return image
 
     def _preprocess_pipeline(self):
-        return [lambda x: x / 255] # TODO: Normalize
+        return []
 
     def set_seed(self, file_name):
         hash_string = hashlib.md5(file_name.encode()).hexdigest()
@@ -33,8 +33,9 @@ class Hirise(Dataset):
         file = os.path.join(self._config.base_path, file_name)
         image_data = fits.getdata(file)
         height, width = image_data.shape
+        normalized_image = (np.log(image_data) / 15) - 1
         # plt.imshow(pdsimage.image, cmap='gray')
-        return np.reshape(image_data, (height, width, 1))
+        return np.reshape(normalized_image, (height, width, 1))
 
     def _crop_input(self, datapoint):
         height, width, depth = datapoint.shape

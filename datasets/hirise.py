@@ -20,7 +20,7 @@ class Hirise(Dataset):
         return image
 
     def _preprocess_pipeline(self):
-        return [lambda x: x / 255, lambda x: self.random_square(x)]
+        return [lambda x: self.random_square(x)]
 
     def set_seed(self, file_name):
         hash_string = hashlib.md5(file_name.encode()).hexdigest()
@@ -33,7 +33,8 @@ class Hirise(Dataset):
         pdsimage = PDS3Image.open(file)
         height, width = pdsimage.image.shape
         # plt.imshow(pdsimage.image, cmap='gray')
-        return np.reshape(pdsimage.image, (height, width, 1))
+        norm_image = pdsimage.image / 255
+        return np.reshape(norm_image, (height, width, 1))
 
     def _crop_input(self, datapoint):
         height, width, depth = datapoint.shape

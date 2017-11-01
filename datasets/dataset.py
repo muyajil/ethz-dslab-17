@@ -54,7 +54,8 @@ class Dataset(object):
             file_name: File name of file representing a datapoint
         
         Returns:
-            A tensor containing the file in the desired form
+            A tensor containing the file in the desired form.
+            Images should already be normalized
         """
         raise NotImplementedError()
         
