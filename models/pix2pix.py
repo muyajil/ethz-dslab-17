@@ -3,7 +3,7 @@ from six.moves import xrange
 import time
 from models.tf_utils import *
 import numpy as np
-from scipy.misc import imsave
+from scipy.misc import imsave, toimage
 from io import BytesIO
 
 
@@ -214,7 +214,7 @@ class Pix2pix(object):
             os.makedirs('{}/images'.format(self._config.log_dir))
 
         for image_id, image in enumerate(single_images):
-            imsave('{}/images/validation_image_{}_{}.png'.format(self._config.log_dir, image_id, train_step), np.squeeze(image), format='png')
+            toimage(np.squeeze(image), cmin=-1, cmax=1).save('{}/images/validation_image_{}_{}.png'.format(self._config.log_dir, image_id, train_step))
             encoded_image = open('{}/images/validation_image_{}_{}.png'.format(self._config.log_dir, image_id, train_step), 'rb').read()
             images_summary.value.add(tag='validation_images/' + str(image_id), image=tf.Summary.Image(encoded_image_string=encoded_image))
 
@@ -291,7 +291,7 @@ class Pix2pix(object):
             h3 = lrelu(batch_norm(conv2d(h2, self._config.dis_conv1_filters * 8, stride_height=1, stride_width=1,
                                          name='d_h3_conv'), name='d_bn3'))
             h4 = linear(tf.reshape(h3, [self._config.batch_size, -1]), 1, scope='d_h3_lin')
-            return tf.nn.tanh(h4), h4
+            return tf.nn.sigmoid(h4), h4
 
     def _generator(self, image):
         """
