@@ -20,7 +20,7 @@ class Config(object):
     dis_conv1_filters = None
     learning_rate = None
     momentum = None
-    gen_grad_max = 100000 # TODO: find suitbale value for this
+    gen_grad_max = 100000  # TODO: find suitbale value for this
     gen_grad_min = -gen_grad_max
 
     def __init__(self,
@@ -41,6 +41,7 @@ class Config(object):
         self.learning_rate = learning_rate
         self.momentum = momentum
 
+
 # TODO: Add object for summaries
 
 
@@ -52,7 +53,8 @@ class Pix2PixOps(object):
     dis_fake_loss = None
     dis_real_loss = None
     gen_loss = None
-    
+    gen_l1_loss = None
+
     # Other metrics
     gen_psnr = None
 
@@ -120,20 +122,21 @@ class Pix2pix(object):
             validation_set: Data on which to evaluate the model.
 
         """
-        
+
         with tf.Session() as sess:
 
             # Optimizer for Discriminator
             dis_optimizer = tf.train.AdamOptimizer(self._config.learning_rate, beta1=self._config.momentum).minimize(
                 self._ops.dis_loss, var_list=self._ops.dis_vars)
-                
+
             # Optimizer for Generator
-            gen_optimizer = tf.train.AdamOptimizer(self._config.learning_rate, beta1=self._config.momentum)
-            gen_grads_and_vars = gen_optimizer.compute_gradients(self._ops.gen_loss, var_list=self._ops.gen_vars)
-            gen_clipped_grads_and_vars = [(tf.clip_by_value(grad, self._config.gen_grad_max, self._config.gen_grad_min, name="g_clip"), var) for grad, var in gen_grads_and_vars]
-            # gen_clipped_grads_and_vars = gen_grads_and_vars
-            gen_optimizer_applied_grads = gen_optimizer.apply_gradients(gen_clipped_grads_and_vars)
-                
+            gen_optimizer = tf.train.AdamOptimizer(self._config.learning_rate, beta1=self._config.momentum).minimize(
+                self._ops.gen_loss, var_list=self._ops.gen_vars)
+
+            # Optimizer for Generator before adding discriminator
+            gen_l1_optimizer = tf.train.AdamOptimizer(self._config.learning_rate, beta1=self._config.momentum).minimize(
+                self._ops.gen_l1_loss, var_list=self._ops.gen_vars)
+
             # Initialization
             init_op = tf.global_variables_initializer()
             sess.run(init_op)
@@ -159,19 +162,31 @@ class Pix2pix(object):
                 else:
                     print("Load failed...")
 
+            gen_l1_losses = []
+            train_disc = False
+
             for epoch in xrange(epochs):
+                if len(gen_l1_losses) > 600 and sum(gen_l1_losses[-10:]) / 10 < 0.05: # TODO: Maybe this belongs into config
+                    train_disc = True
                 for batch_num, batch in enumerate(training_set.batch_iter(stop_after_epoch=True)):
 
-                    # Discriminator
-                    # if epoch > 1:
-                    _, summary_str = sess.run([dis_optimizer, dis_summary],
-                                              feed_dict={self._ops.input_image: batch})
-                    writer.add_summary(summary_str, train_step)
+                    if train_disc:
+                        # Discriminator
+                        _, summary_str = sess.run([dis_optimizer, dis_summary],
+                                                  feed_dict={self._ops.input_image: batch})
+                        writer.add_summary(summary_str, train_step)
 
-                    # Generator
-                    _, summary_str = sess.run([gen_optimizer_applied_grads, gen_summary],
-                                              feed_dict={self._ops.input_image: batch})
-                    writer.add_summary(summary_str, train_step)
+                        # Generator
+                        _, summary_str = sess.run([gen_optimizer, gen_summary],
+                                                  feed_dict={self._ops.input_image: batch})
+                        writer.add_summary(summary_str, train_step)
+                    else:
+                        # Train only the generator on the l1 loss
+                        _, l1_summary, l1_loss = sess.run([gen_l1_optimizer, self._ops.gen_l1_loss_summary, self._ops.gen_l1_loss],
+                                                  feed_dict={self._ops.input_image: batch})
+                        writer.add_summary(l1_summary, train_step)
+
+                        gen_l1_losses.append(l1_loss)
 
                     print(
                         "Epoch: [%2d]\tTrain Step: [%2d]\tBatch: [%2d]\tTime: %4.4f" % (
@@ -214,14 +229,17 @@ class Pix2pix(object):
             os.makedirs('{}/images'.format(self._config.log_dir))
 
         for image_id, image in enumerate(single_images):
-            toimage(np.squeeze(image), cmin=-1, cmax=1).save('{}/images/validation_image_{}_{}.png'.format(self._config.log_dir, image_id, train_step))
-            encoded_image = open('{}/images/validation_image_{}_{}.png'.format(self._config.log_dir, image_id, train_step), 'rb').read()
-            images_summary.value.add(tag='validation_images/' + str(image_id), image=tf.Summary.Image(encoded_image_string=encoded_image))
+            toimage(np.squeeze(image), cmin=-1, cmax=1).save(
+                '{}/images/validation_image_{}_{}.png'.format(self._config.log_dir, image_id, train_step))
+            encoded_image = open(
+                '{}/images/validation_image_{}_{}.png'.format(self._config.log_dir, image_id, train_step), 'rb').read()
+            images_summary.value.add(tag='validation_images/' + str(image_id),
+                                     image=tf.Summary.Image(encoded_image_string=encoded_image))
 
         loss_summary.value.add(tag='avg_validation_loss', simple_value=avg_val_loss)
         # psnr_summary.value.add(tag='avg_val_gen_psnr', simple_value=avg_val_psnr)
 
-        return images_summary, loss_summary #, psnr_summary
+        return images_summary, loss_summary  # , psnr_summary
 
     def _setup_model(self):
         """ Creates a new pix2pix tensorflow model.
@@ -242,12 +260,11 @@ class Pix2pix(object):
         self._ops.dis_fake_loss = tf.reduce_mean(
             tf.nn.sigmoid_cross_entropy_with_logits(logits=dis_fake_logits, labels=tf.zeros_like(dis_fake_pred)))
         self._ops.dis_loss = self._ops.dis_fake_loss + self._ops.dis_real_loss
-        gen_l1_loss = tf.reduce_mean(tf.abs(self._ops.input_image - generator_output))
+        self._ops.gen_l1_loss = tf.reduce_mean(tf.abs(self._ops.input_image - generator_output))
         self._ops.gen_loss = \
             tf.reduce_mean(
                 tf.nn.sigmoid_cross_entropy_with_logits(logits=dis_fake_logits, labels=tf.ones_like(dis_fake_pred))) \
-            + self._config.l1_lambda * gen_l1_loss
-            
+            + self._config.l1_lambda * self._ops.gen_l1_loss
         # Metrics
         # self._ops.gen_psnr = psnr(self._ops.input_image, generator_output)
 
@@ -259,7 +276,7 @@ class Pix2pix(object):
         self._ops.dis_fake_loss_summary = tf.summary.scalar("dis_fake_loss", self._ops.dis_fake_loss)
         self._ops.dis_real_pred_histo = tf.summary.histogram("dis_real_pred", dis_real_pred)
         self._ops.dis_fake_pred_histo = tf.summary.histogram("dis_fake_pred", dis_fake_pred)
-        self._ops.gen_l1_loss_summary = tf.summary.scalar("gen_l1_loss", gen_l1_loss)
+        self._ops.gen_l1_loss_summary = tf.summary.scalar("gen_l1_loss", self._ops.gen_l1_loss)
         self._ops.concatenated_images = tf.concat([generator_output, self._ops.input_image], 1)
 
         # Trainable Variables
@@ -308,19 +325,6 @@ class Pix2pix(object):
                 int(o_w / 2), int(o_w / 4), int(o_w / 8), int(o_w / 16), int(o_w / 32), int(o_w / 64), int(o_w / 128)
             self.gen_dim = self._config.gen_conv1_filters
 
-            """
-            EXAMPLE:  if _gen_conv1_filters = 64
-            image:    [batch_size, 1024, 1024, 1]
-            e1:       [batch_size, 512, 512, 64]
-            e2:       [batch_size, 256, 256, 128]
-            e3:       [batch_size, 128, 128, 256]
-            e4:       [batch_size, 64,  64,  512]
-            e5:       [batch_size, 32,  32,  512]
-            e6:       [batch_size, 16,  16,  512]
-            e7:       [batch_size, 8,   8,   512]
-            e8:       [batch_size, 4,   4,   512]
-            """
-
             # Encoder
             e1 = conv2d(image, self.gen_dim, name='g_e1_conv')
             e2 = batch_norm(conv2d(lrelu(e1), self.gen_dim * 2, name='g_e2_conv'), name='g_bn_e2')
@@ -330,18 +334,6 @@ class Pix2pix(object):
             e6 = batch_norm(conv2d(lrelu(e5), self.gen_dim * 8, name='g_e6_conv'), name='g_bn_e6')
             e7 = batch_norm(conv2d(lrelu(e6), self.gen_dim * 8, name='g_e7_conv'), name='g_bn_e7')
             e8 = batch_norm(conv2d(lrelu(e7), self.gen_dim * 8, name='g_e8_conv'), name='g_bn_e8')
-
-            """
-            EXAMPLE:
-            d1:       [batch_size, 8,   8,   512+512]
-            d2:       [batch_size, 16,   16,   512+512]
-            d3:       [batch_size, 32,   32,   512+512]
-            d4:       [batch_size, 64,   64,   512+512]
-            d5:       [batch_size, 128,   128,   256+256]
-            d6:       [batch_size, 256,   256,   128]
-            d7:       [batch_size, 512,   512,   64]
-            d8:       [batch_size, 1024,  1024,  1]
-            """
 
             # Decoder
             d1 = tf.nn.dropout(batch_norm(deconv2d(tf.nn.relu(e8),
