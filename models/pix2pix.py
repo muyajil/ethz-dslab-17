@@ -351,11 +351,11 @@ class Pix2pix(object):
             d4 = tf.nn.dropout(batch_norm(deconv2d(tf.nn.relu(d3),
                                                    [self._config.batch_size, h16, w16, self.gen_dim * 8],
                                                    name='g_d4'), name='g_bn_d4'), 0.5)
-            d4 = tf.concat([d4, e4], 3)
+            # REMOVE U-NET LINK: d4 = tf.concat([d4, e4], 3)
             d5 = batch_norm(deconv2d(tf.nn.relu(d4),
                                      [self._config.batch_size, h8, w8, self.gen_dim * 4],
                                      name='g_d5'), name='g_bn_d5')
-            d5 = tf.concat([d5, e3], 3)
+            # REMOVE U-NET LINK: d5 = tf.concat([d5, e3], 3)
             d6 = batch_norm(deconv2d(tf.nn.relu(d5),
                                      [self._config.batch_size, h4, w4, self.gen_dim * 2],
                                      name='g_d6'), name='g_bn_d6')
