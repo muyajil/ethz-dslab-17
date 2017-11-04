@@ -11,7 +11,7 @@ import os
 import time
 
 
-def download_images(download_location, min_images):
+def download_images(download_location, min_images, temp_download_location=None):
     """Download Decam images
     """
     ftp_server = "archive.noao.edu"
@@ -33,10 +33,11 @@ def download_images(download_location, min_images):
                 if images_downloaded > min_images:
                     return
                 if "fits" in file:
-                    file_path = os.path.join(download_location, file)
-                    if os.path.exists(file_path):
+                    file_path = os.path.join(download_location, file) if temp_download_location is None \
+                                                                      else os.path.join(temp_download_location, file)
+                    if os.path.exists(os.path.join(download_location, file)):
                         continue
-                    handle = open(os.path.join(download_location, file), 'wb')
+                    handle = open(file_path, 'wb')
                     ftp.retrbinary('RETR %s' % file, handle.write)
                     print("Downloaded image: {}".format(file))
                     images_downloaded += 1
@@ -47,9 +48,13 @@ def download_images(download_location, min_images):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("download_location", metavar="download_location", type=str, help="Path to download images to")
-    parser.add_argument("--min_images", dest="min_images", type=int, help="Minimum number of images to download", default=-1)
+    parser.add_argument("--min_images", dest="min_images", type=int, help="Minimum number of images to download",
+                        default=-1)
     args = parser.parse_args()
 
-    if not os.path.exists(args.download_location):
+    if os.path.exists(args.download_location):
+        os.makedirs("{}_new".format(args.download_location))
+        download_images(args.download_location, args.min_images, "{}_new".format(args.download_location))
+    else:
         os.makedirs(args.download_location)
-    download_images(args.download_location, args.min_images)
+        download_images(args.download_location, args.min_images)
