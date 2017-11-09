@@ -30,7 +30,7 @@ def download_images(download_location, min_images):
             ftp.cwd(brick)
             files = ftp.nlst()
             for file in files:
-                if images_downloaded > min_images:
+                if 0 < min_images < images_downloaded:
                     return
                 if "fits" in file:
                     file_path = os.path.join(download_location, file)
