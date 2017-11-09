@@ -74,7 +74,7 @@ if __name__ == "__main__":
     dataset_config = getattr(dataset_module, "config")
     dataset.initialize(dataset_config, args.base_path, input_dimensions, args.batch_size)
 
-    model_config = Config(args.batch_size, input_dimensions, args.log_dir, l1_lambda=100)
+    model_config = Config(args.batch_size, input_dimensions, args.log_dir, l1_lambda=10)
     if args.restore_path != '':
         model = Pix2pix(config=model_config, restore_path=args.restore_path)
     else:

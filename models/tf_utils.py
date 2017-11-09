@@ -83,7 +83,7 @@ def linear(input_, output_size, scope=None, stddev=0.02, bias_start=0.0, with_w=
 
 
 def psnr(original, reconstructed, peak=1.0, scope=None):
-    mse = tf.metrics.mean_squared_error(original, reconstructed, name=scope)
+    mse = tf.reduce_mean(tf.squared_difference(original, reconstructed))
     rmse = tf.sqrt(mse)
     return tf.scalar_mul(tf.constant(20.0), log10(tf.divide(tf.constant(peak), rmse)))
 
