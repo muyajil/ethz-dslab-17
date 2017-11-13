@@ -27,9 +27,9 @@ class Config(object):
                  batch_size,
                  input_dimensions,
                  log_dir,
-                 l1_lambda=10,
+                 l1_lambda=100,
                  smooth = 0.0,
-                 gen_conv1_filters=4,
+                 gen_conv1_filters=64,
                  dis_conv1_filters=64,
                  learning_rate=0.0002,
                  momentum=0.5):
