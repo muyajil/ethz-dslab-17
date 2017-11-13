@@ -81,7 +81,7 @@ if __name__ == "__main__":
         t.start()
         for i in range(8):
             flags=[True if j<i else False for j in range(7)]
-            model = Pix2Pix(config=Config(args.batch_size, input_dimensions, args.log_dir, link_flags=flags))
+            model = Pix2pix(config=Config(args.batch_size, input_dimensions, args.log_dir, link_flags=flags))
             run_model(args.run_mode, args.epochs, args.split_ratio)
 
     else:
