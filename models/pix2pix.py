@@ -13,6 +13,8 @@ class Config(object):
     batch_size = None
     input_dimensions = None
     log_dir = None
+    
+    link_flags = None
 
     l1_lambda = None
     smooth = None
@@ -32,7 +34,8 @@ class Config(object):
                  gen_conv1_filters=64,
                  dis_conv1_filters=64,
                  learning_rate=0.0002,
-                 momentum=0.5):
+                 momentum=0.5,
+                 link_flags=[True for _ in range(7)]):
         self.batch_size = batch_size
         self.input_dimensions = input_dimensions
         self.log_dir = log_dir
@@ -42,6 +45,7 @@ class Config(object):
         self.dis_conv1_filters = dis_conv1_filters
         self.learning_rate = learning_rate
         self.momentum = momentum
+        self.link_flags = link_flags
 
 
 # TODO: Add object for summaries
@@ -168,6 +172,7 @@ class Pix2pix(object):
                     print("Load failed...")
 
             window = 100
+            pretrain_epochs = 1
             gen_l1_losses = list(100 for _ in range(window))
             gen_l1_losses_index = 0
             pre_train = True
@@ -176,20 +181,18 @@ class Pix2pix(object):
             for epoch in xrange(epochs):
                 for batch_num, batch in enumerate(training_set.batch_iter(stop_after_epoch=True)):
 
-                    if pre_train:
-                        if sum(gen_l1_losses)/len(gen_l1_losses) > pre_train_thresh:
+                    if epoch < pretrain_epochs:
+                
+                        # Train only the generator on the l1 loss
+                        _, l1_summary, l1_loss = sess.run(
+                            [gen_l1_optimizer, self._ops.gen_l1_loss_summary, self._ops.gen_l1_loss],
+                            feed_dict={self._ops.input_image: batch})
+                        writer.add_summary(l1_summary, train_step)
 
-                            # Train only the generator on the l1 loss
-                            _, l1_summary, l1_loss = sess.run(
-                                [gen_l1_optimizer, self._ops.gen_l1_loss_summary, self._ops.gen_l1_loss],
-                                feed_dict={self._ops.input_image: batch})
-                            writer.add_summary(l1_summary, train_step)
+                        gen_l1_losses[gen_l1_losses_index] = l1_loss
+                        gen_l1_losses_index += 1
+                        gen_l1_losses_index %= window
 
-                            gen_l1_losses[gen_l1_losses_index] = l1_loss
-                            gen_l1_losses_index += 1
-                            gen_l1_losses_index %= window
-                        else:
-                            pre_train = False
                     else:
                         if True:
                             # Discriminator
@@ -221,10 +224,9 @@ class Pix2pix(object):
                             batch_num + 1,
                             time.time() - start_time))
 
-                    if train_step % 500 == 0:
-                        self.save(sess, train_step)
-
-                    if train_step % 10 == 0:
+                    # if train_step % 500 == 0:
+                        # DISABLED FOR EXPERIMENTS: self.save(sess, train_step)
+                    if train_step % 100 == 0:
                         images_summary, loss_summary, psnr_summary = self.validate(sess, validation_set, train_step)
                         writer.add_summary(images_summary, global_step=train_step)
                         writer.add_summary(loss_summary, global_step=train_step)
@@ -276,7 +278,7 @@ class Pix2pix(object):
                                                             self._config.input_dimensions.width,
                                                             self._config.input_dimensions.depth])
 
-        generator_output = self._generator(self._ops.input_image)
+        generator_output = self._generator(self._ops.input_image, link_flags=self._config.link_flags)
 
         real_images = tf.concat([self._ops.input_image, self._ops.input_image], 3)
         fake_images = tf.concat([self._ops.input_image, generator_output], 3)
@@ -340,7 +342,7 @@ class Pix2pix(object):
             h4 = linear(tf.reshape(h3, [self._config.batch_size, -1]), 1, scope='d_h3_lin')
             return tf.nn.sigmoid(h4), h4
 
-    def _generator(self, image):
+    def _generator(self, image, link_flags=[True for _ in range(7)]):
         """
         Args:
             image: tensor of shape [batch_size, height, width, depth]
@@ -357,7 +359,7 @@ class Pix2pix(object):
 
             # Encoder
             e1 = conv2d(image, self.gen_dim, name='g_e1_conv')
-            e2 = batch_norm(conv2d(lrelu(e1), self.gen_dim * 2, name='g_e2_conv'), name='g_bn_e2') #
+            e2 = batch_norm(conv2d(lrelu(e1), self.gen_dim * 2, name='g_e2_conv'), name='g_bn_e2')
             e3 = batch_norm(conv2d(lrelu(e2), self.gen_dim * 4, name='g_e3_conv'), name='g_bn_e3')
             e4 = batch_norm(conv2d(lrelu(e3), self.gen_dim * 8, name='g_e4_conv'), name='g_bn_e4')
             e5 = batch_norm(conv2d(lrelu(e4), self.gen_dim * 8, name='g_e5_conv'), name='g_bn_e5')
@@ -371,35 +373,37 @@ class Pix2pix(object):
             d1 = tf.nn.dropout(batch_norm(deconv2d(tf.nn.relu(e8),
                                                    [self._config.batch_size, h128, w128, self.gen_dim * 8],
                                                    name='g_d1'), name='g_bn_d1'), 0.5)
-            d1 = tf.concat([d1, e7], 3)
+            if link_flags[0]:                                         
+                d1 = tf.concat([d1, e7], 3)
             d2 = tf.nn.dropout(batch_norm(deconv2d(tf.nn.relu(d1),
                                                    [self._config.batch_size, h64, w64, self.gen_dim * 8],
                                                    name='g_d2'), name='g_bn_d2'), 0.5)
-            d2 = tf.concat([d2, e6], 3)
+            if link_flags[1]:                                         
+                d2 = tf.concat([d2, e6], 3)
             d3 = tf.nn.dropout(batch_norm(deconv2d(tf.nn.relu(d2),
                                                    [self._config.batch_size, h32, w32, self.gen_dim * 8],
                                                    name='g_d3'), name='g_bn_d3'), 0.5)
-            d3 = tf.concat([d3, e5], 3)
+            if link_flags[2]:                                        
+                d3 = tf.concat([d3, e5], 3)
             d4 = tf.nn.dropout(batch_norm(deconv2d(tf.nn.relu(d3),
                                                    [self._config.batch_size, h16, w16, self.gen_dim * 8],
                                                    name='g_d4'), name='g_bn_d4'), 0.5)
-            # REMOVE U-NET LINK:
-            d4 = tf.concat([d4, e4], 3)
+            if link_flags[3]: 
+                d4 = tf.concat([d4, e4], 3)
             d5 = batch_norm(deconv2d(tf.nn.relu(d4),
                                      [self._config.batch_size, h8, w8, self.gen_dim * 4],
                                      name='g_d5'), name='g_bn_d5')
-            # REMOVE U-NET LINK:
-            # d5 = tf.concat([d5, e3], 3)
+            if link_flags[4]: 
+                d5 = tf.concat([d5, e3], 3)
             d6 = batch_norm(deconv2d(tf.nn.relu(d5),
                                      [self._config.batch_size, h4, w4, self.gen_dim * 2],
                                      name='g_d6'), name='g_bn_d6')
-            # REMOVE U-NET LINK:
-            # d6 = tf.concat([d6, e2], 3)
+            if link_flags[5]: 
+                d6 = tf.concat([d6, e2], 3)
             d7 = batch_norm(deconv2d(tf.nn.relu(d6),
                                      [self._config.batch_size, h2, w2, self.gen_dim],
                                      name='g_d7'), name='g_bn_d7')
-            # REMOVE U-NET LINK:
-            # d7 = tf.concat([d7, e1], 3)
-            print("d7 shape: " + str(d7.get_shape()))
+            if link_flags[6]: 
+                d7 = tf.concat([d7, e1], 3)
             d8 = deconv2d(tf.nn.relu(d7), [self._config.batch_size, o_h, o_w, o_c], name='g_d8')
             return tf.nn.tanh(d8)

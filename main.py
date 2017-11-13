@@ -5,6 +5,8 @@ from pydoc import locate
 from models.pix2pix import *
 from utils import Dimension
 
+EXPERIMENT = True
+
 model = None
 dataset = None
 
@@ -74,13 +76,22 @@ if __name__ == "__main__":
     dataset_config = getattr(dataset_module, "config")
     dataset.initialize(dataset_config, args.base_path, input_dimensions, args.batch_size)
 
-    model_config = Config(args.batch_size, input_dimensions, args.log_dir)
-    if args.restore_path != '':
-        model = Pix2pix(config=model_config, restore_path=args.restore_path)
+    if EXPERIMENT:
+        t = threading.Thread(target=run_tensorboard, args=([args.log_dir, args.pythonpath]))
+        t.start()
+        for i in range(8):
+            flags=[True if j<i else False for j in range(7)]
+            model = Pix2Pix(config=Config(args.batch_size, input_dimensions, args.log_dir, link_flags=flags))
+            run_model(args.run_mode, args.epochs, args.split_ratio)
+
     else:
-        model = Pix2pix(config=model_config)
+        model_config = Config(args.batch_size, input_dimensions, args.log_dir)
+        if args.restore_path != '':
+            model = Pix2pix(config=model_config, restore_path=args.restore_path)
+        else:
+            model = Pix2pix(config=model_config)
 
-    t = threading.Thread(target=run_tensorboard, args=([args.log_dir, args.pythonpath]))
-    t.start()
+        t = threading.Thread(target=run_tensorboard, args=([args.log_dir, args.pythonpath]))
+        t.start()
 
-    run_model(args.run_mode, args.epochs, args.split_ratio)
+        run_model(args.run_mode, args.epochs, args.split_ratio)
