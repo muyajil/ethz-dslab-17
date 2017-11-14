@@ -79,7 +79,7 @@ if __name__ == "__main__":
     if EXPERIMENT:
         #t = threading.Thread(target=run_tensorboard, args=([args.log_dir, args.pythonpath]))
         #t.start()
-        model = Pix2pix(config=Config(args.batch_size, input_dimensions, args.log_dir, link_flags=[True, True, False, False, False, False, False]))
+        model = Pix2pix(config=Config(args.batch_size, input_dimensions, args.log_dir, gen_conv1_filters=8))
         run_model(args.run_mode, args.epochs, args.split_ratio)
 
     else:

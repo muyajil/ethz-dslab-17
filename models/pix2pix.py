@@ -47,6 +47,28 @@ class Config(object):
         self.momentum = momentum
         self.link_flags = link_flags
 
+        # Compute Compression Rate
+        h = input_dimensions.height
+        w = input_dimensions.width
+        gf = gen_conv1_filters
+        compressed_size = 0
+        if link_flags[0]:
+            compressed_size += (h/128)*(w/128)*gf*8
+        if link_flags[1]:
+            compressed_size += (h/64)*(w/64)*gf*8
+        if link_flags[2]:
+            compressed_size += (h/32)*(w/32)*gf*8
+        if link_flags[3]:
+            compressed_size += (h/16)*(w/16)*gf*8
+        if link_flags[4]:
+            compressed_size += (h/8)*(w/8)*gf*4
+        if link_flags[5]:
+            compressed_size += (h/4)*(w/4)*gf*2
+        if link_flags[6]:
+            compressed_size += (h/2)*(w/2)*gf*1
+        compression_rate = (h*w) / compressed_size
+        print("Compressed size = " + str(compressed_size))
+        print("Compression Rate = " + str(compression_rate))
 
 # TODO: Add object for summaries
 
