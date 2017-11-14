@@ -77,12 +77,10 @@ if __name__ == "__main__":
     dataset.initialize(dataset_config, args.base_path, input_dimensions, args.batch_size)
 
     if EXPERIMENT:
-        t = threading.Thread(target=run_tensorboard, args=([args.log_dir, args.pythonpath]))
-        t.start()
-        for i in range(8):
-            flags=[True if j<i else False for j in range(7)]
-            model = Pix2pix(config=Config(args.batch_size, input_dimensions, args.log_dir, link_flags=flags))
-            run_model(args.run_mode, args.epochs, args.split_ratio)
+        #t = threading.Thread(target=run_tensorboard, args=([args.log_dir, args.pythonpath]))
+        #t.start()
+        model = Pix2pix(config=Config(args.batch_size, input_dimensions, args.log_dir, link_flags=[True, True, False, False, False, False, False]))
+        run_model(args.run_mode, args.epochs, args.split_ratio)
 
     else:
         model_config = Config(args.batch_size, input_dimensions, args.log_dir)

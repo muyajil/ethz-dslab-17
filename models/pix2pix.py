@@ -13,7 +13,7 @@ class Config(object):
     batch_size = None
     input_dimensions = None
     log_dir = None
-    
+
     link_flags = None
 
     l1_lambda = None
@@ -313,6 +313,7 @@ class Pix2pix(object):
 
         # Trainable Variables
         train_vars = tf.trainable_variables()
+        print("Number of parameters: " + str(len(train_vars)))
         self._ops.dis_vars = [var for var in train_vars if 'd_' in var.name]
         self._ops.gen_vars = [var for var in train_vars if 'g_' in var.name]
 
