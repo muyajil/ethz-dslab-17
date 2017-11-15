@@ -15,6 +15,9 @@ class Config(object):
     log_dir = None
 
     link_flags = None
+    gen_train_times = None
+    dis_filter_multipliers = None
+    gen_filter_multipliers = None
 
     l1_lambda = None
     smooth = None
@@ -35,7 +38,10 @@ class Config(object):
                  dis_conv1_filters=64,
                  learning_rate=0.0002,
                  momentum=0.5,
-                 link_flags=[True for _ in range(7)]):
+                 link_flags=[True for _ in range(7)],
+                 gen_train_times=1,
+                 dis_filter_multipliers=[2,4,8],
+                 gen_filter_multipliers=[2,4,8,8,8,8,8]):
         self.batch_size = batch_size
         self.input_dimensions = input_dimensions
         self.log_dir = log_dir
@@ -46,24 +52,27 @@ class Config(object):
         self.learning_rate = learning_rate
         self.momentum = momentum
         self.link_flags = link_flags
+        self.gen_train_times = gen_train_times
+        self.dis_filter_multipliers = dis_filter_multipliers
+        self.gen_filter_multipliers = gen_filter_multipliers
 
         # Compute Compression Rate
         h = input_dimensions.height
         w = input_dimensions.width
         gf = gen_conv1_filters
-        compressed_size = 0
+        compressed_size = (h/256)*(w/256)*gf*gen_filter_multipliers[6]
         if link_flags[0]:
-            compressed_size += (h/128)*(w/128)*gf*8
+            compressed_size += (h/128)*(w/128)*gf*gen_filter_multipliers[5]
         if link_flags[1]:
-            compressed_size += (h/64)*(w/64)*gf*8
+            compressed_size += (h/64)*(w/64)*gf*gen_filter_multipliers[4]
         if link_flags[2]:
-            compressed_size += (h/32)*(w/32)*gf*8
+            compressed_size += (h/32)*(w/32)*gf*gen_filter_multipliers[3]
         if link_flags[3]:
-            compressed_size += (h/16)*(w/16)*gf*8
+            compressed_size += (h/16)*(w/16)*gf*gen_filter_multipliers[2]
         if link_flags[4]:
-            compressed_size += (h/8)*(w/8)*gf*4
+            compressed_size += (h/8)*(w/8)*gf*gen_filter_multipliers[1]
         if link_flags[5]:
-            compressed_size += (h/4)*(w/4)*gf*2
+            compressed_size += (h/4)*(w/4)*gf*gen_filter_multipliers[0]
         if link_flags[6]:
             compressed_size += (h/2)*(w/2)*gf*1
         compression_rate = (h*w) / compressed_size
@@ -101,6 +110,7 @@ class Pix2PixOps(object):
     dis_fake_pred_histo = None
     gen_l1_loss_summary = None
 
+    gen_filter_images_summary = None
 
 class Pix2pix(object):
     # Use L1 for less blurring
@@ -178,7 +188,8 @@ class Pix2pix(object):
 
             gen_summary = tf.summary.merge(
                 [self._ops.dis_fake_pred_histo, self._ops.dis_fake_loss_summary,
-                 self._ops.gen_loss_summary, self._ops.gen_l1_loss_summary])
+                 self._ops.gen_loss_summary, self._ops.gen_l1_loss_summary,
+                 self._ops.gen_filter_images_summary])
 
             writer = tf.summary.FileWriter(self._config.log_dir, sess.graph)
 
@@ -222,13 +233,14 @@ class Pix2pix(object):
                                                   feed_dict={self._ops.input_image: batch})
                             writer.add_summary(summary_str, train_step)
 
-                            # Generator
-                            _, summary_str, l1_loss = sess.run([gen_optimizer, gen_summary,  self._ops.gen_l1_loss],
-                                                  feed_dict={self._ops.input_image: batch})
-                            writer.add_summary(summary_str, train_step)
-                            gen_l1_losses[gen_l1_losses_index] = l1_loss
-                            gen_l1_losses_index += 1
-                            gen_l1_losses_index %= window
+                            for _ in range(self._config.gen_train_times):
+                                # Generator
+                                _, summary_str, l1_loss = sess.run([gen_optimizer, gen_summary,  self._ops.gen_l1_loss],
+                                                      feed_dict={self._ops.input_image: batch})
+                                writer.add_summary(summary_str, train_step)
+                                gen_l1_losses[gen_l1_losses_index] = l1_loss
+                                gen_l1_losses_index += 1
+                                gen_l1_losses_index %= window
 
                         else:
                             # Generator
@@ -308,6 +320,9 @@ class Pix2pix(object):
         dis_real_pred, dis_real_logits = self._discriminator(real_images, reuse=False)
         dis_fake_pred, dis_fake_logits = self._discriminator(fake_images, reuse=True)
 
+        print("dis_real_logits = " + str(dis_real_logits))
+        print("dis_fake_logits = " + str(dis_fake_logits))
+
         # Loss functions
         self._ops.dis_real_loss = tf.reduce_mean(
             tf.nn.sigmoid_cross_entropy_with_logits(logits=dis_real_logits, labels=tf.ones_like(dis_real_pred)*(1-self._config.smooth)))
@@ -332,10 +347,18 @@ class Pix2pix(object):
         self._ops.dis_fake_pred_histo = tf.summary.histogram("dis_fake_pred", dis_fake_pred)
         self._ops.gen_l1_loss_summary = tf.summary.scalar("gen_l1_loss", self._ops.gen_l1_loss)
         self._ops.concatenated_images = tf.concat([generator_output, self._ops.input_image], 1)
+        with tf.variable_scope("", reuse=True):
+            kernel1 = tf.get_variable("generator/g_e1_conv/w")
+            kernel2 = tf.get_variable("generator/g_e2_conv/w")
+            kernel3 = tf.get_variable("generator/g_e3_conv/w")
+            filter1 = tf.reshape(kernel1, [-1, 5, 5, 1])[0]
+            filter2 = tf.reshape(kernel2, [-1, 5, 5, 1])[0]
+            filter3 = tf.reshape(kernel3, [-1, 5, 5, 1])[0]
+            filters = tf.stack([filter1, filter2, filter3])
+            self._ops.gen_filter_images_summary = tf.summary.image("gen_filters", filters)
 
         # Trainable Variables
         train_vars = tf.trainable_variables()
-        print("Number of parameters: " + str(len(train_vars)))
         self._ops.dis_vars = [var for var in train_vars if 'd_' in var.name]
         self._ops.gen_vars = [var for var in train_vars if 'g_' in var.name]
 
@@ -358,9 +381,9 @@ class Pix2pix(object):
             """
 
             h0 = lrelu(conv2d(images, self._config.dis_conv1_filters, name='d_h0_conv'))
-            h1 = lrelu(batch_norm(conv2d(h0, self._config.dis_conv1_filters * 2, name='d_h1_conv'), name='d_bn1'))
-            h2 = lrelu(batch_norm(conv2d(h1, self._config.dis_conv1_filters * 4, name='d_h2_conv'), name='d_bn2'))
-            h3 = lrelu(batch_norm(conv2d(h2, self._config.dis_conv1_filters * 8, stride_height=1, stride_width=1,
+            h1 = lrelu(batch_norm(conv2d(h0, self._config.dis_conv1_filters * self._config.dis_filter_multipliers[0], name='d_h1_conv'), name='d_bn1'))
+            h2 = lrelu(batch_norm(conv2d(h1, self._config.dis_conv1_filters * self._config.dis_filter_multipliers[1], name='d_h2_conv'), name='d_bn2'))
+            h3 = lrelu(batch_norm(conv2d(h2, self._config.dis_conv1_filters * self._config.dis_filter_multipliers[2], stride_height=1, stride_width=1,
                                          name='d_h3_conv'), name='d_bn3'))
             h4 = linear(tf.reshape(h3, [self._config.batch_size, -1]), 1, scope='d_h3_lin')
             return tf.nn.sigmoid(h4), h4
@@ -382,44 +405,44 @@ class Pix2pix(object):
 
             # Encoder
             e1 = conv2d(image, self.gen_dim, name='g_e1_conv')
-            e2 = batch_norm(conv2d(lrelu(e1), self.gen_dim * 2, name='g_e2_conv'), name='g_bn_e2')
-            e3 = batch_norm(conv2d(lrelu(e2), self.gen_dim * 4, name='g_e3_conv'), name='g_bn_e3')
-            e4 = batch_norm(conv2d(lrelu(e3), self.gen_dim * 8, name='g_e4_conv'), name='g_bn_e4')
-            e5 = batch_norm(conv2d(lrelu(e4), self.gen_dim * 8, name='g_e5_conv'), name='g_bn_e5')
-            e6 = batch_norm(conv2d(lrelu(e5), self.gen_dim * 8, name='g_e6_conv'), name='g_bn_e6')
-            e7 = batch_norm(conv2d(lrelu(e6), self.gen_dim * 8, name='g_e7_conv'), name='g_bn_e7')
-            e8 = batch_norm(conv2d(lrelu(e7), self.gen_dim * 8, name='g_e8_conv'), name='g_bn_e8')
+            e2 = batch_norm(conv2d(lrelu(e1), self.gen_dim * self._config.gen_filter_multipliers[0], name='g_e2_conv'), name='g_bn_e2')
+            e3 = batch_norm(conv2d(lrelu(e2), self.gen_dim * self._config.gen_filter_multipliers[1], name='g_e3_conv'), name='g_bn_e3')
+            e4 = batch_norm(conv2d(lrelu(e3), self.gen_dim * self._config.gen_filter_multipliers[2], name='g_e4_conv'), name='g_bn_e4')
+            e5 = batch_norm(conv2d(lrelu(e4), self.gen_dim * self._config.gen_filter_multipliers[3], name='g_e5_conv'), name='g_bn_e5')
+            e6 = batch_norm(conv2d(lrelu(e5), self.gen_dim * self._config.gen_filter_multipliers[4], name='g_e6_conv'), name='g_bn_e6')
+            e7 = batch_norm(conv2d(lrelu(e6), self.gen_dim * self._config.gen_filter_multipliers[5], name='g_e7_conv'), name='g_bn_e7')
+            e8 = batch_norm(conv2d(lrelu(e7), self.gen_dim * self._config.gen_filter_multipliers[6], name='g_e8_conv'), name='g_bn_e8')
 
             print("e9 dimension: " + str(e8.get_shape()))
 
             # Decoder
             d1 = tf.nn.dropout(batch_norm(deconv2d(tf.nn.relu(e8),
-                                                   [self._config.batch_size, h128, w128, self.gen_dim * 8],
+                                                   [self._config.batch_size, h128, w128, self.gen_dim * self._config.gen_filter_multipliers[5]],
                                                    name='g_d1'), name='g_bn_d1'), 0.5)
             if link_flags[0]:                                         
                 d1 = tf.concat([d1, e7], 3)
             d2 = tf.nn.dropout(batch_norm(deconv2d(tf.nn.relu(d1),
-                                                   [self._config.batch_size, h64, w64, self.gen_dim * 8],
+                                                   [self._config.batch_size, h64, w64, self.gen_dim * self._config.gen_filter_multipliers[4]],
                                                    name='g_d2'), name='g_bn_d2'), 0.5)
             if link_flags[1]:                                         
                 d2 = tf.concat([d2, e6], 3)
             d3 = tf.nn.dropout(batch_norm(deconv2d(tf.nn.relu(d2),
-                                                   [self._config.batch_size, h32, w32, self.gen_dim * 8],
+                                                   [self._config.batch_size, h32, w32, self.gen_dim * self._config.gen_filter_multipliers[3]],
                                                    name='g_d3'), name='g_bn_d3'), 0.5)
             if link_flags[2]:                                        
                 d3 = tf.concat([d3, e5], 3)
             d4 = tf.nn.dropout(batch_norm(deconv2d(tf.nn.relu(d3),
-                                                   [self._config.batch_size, h16, w16, self.gen_dim * 8],
+                                                   [self._config.batch_size, h16, w16, self.gen_dim * self._config.gen_filter_multipliers[2]],
                                                    name='g_d4'), name='g_bn_d4'), 0.5)
             if link_flags[3]: 
                 d4 = tf.concat([d4, e4], 3)
             d5 = batch_norm(deconv2d(tf.nn.relu(d4),
-                                     [self._config.batch_size, h8, w8, self.gen_dim * 4],
+                                     [self._config.batch_size, h8, w8, self.gen_dim * self._config.gen_filter_multipliers[1]],
                                      name='g_d5'), name='g_bn_d5')
             if link_flags[4]: 
                 d5 = tf.concat([d5, e3], 3)
             d6 = batch_norm(deconv2d(tf.nn.relu(d5),
-                                     [self._config.batch_size, h4, w4, self.gen_dim * 2],
+                                     [self._config.batch_size, h4, w4, self.gen_dim * self._config.gen_filter_multipliers[0]],
                                      name='g_d6'), name='g_bn_d6')
             if link_flags[5]: 
                 d6 = tf.concat([d6, e2], 3)
