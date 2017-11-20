@@ -77,9 +77,9 @@ if __name__ == "__main__":
     dataset.initialize(dataset_config, args.base_path, input_dimensions, args.batch_size)
 
     if EXPERIMENT:
-        t = threading.Thread(target=run_tensorboard, args=([args.log_dir, args.pythonpath]))
-        t.start()
-        model = Pix2pix(config=Config(args.batch_size, input_dimensions, args.log_dir, gen_conv1_filters=8, dis_conv1_filters=8, link_flags=[True, True, True, True, True, False, False], dis_filter_multipliers=[1,1,1], gen_filter_multipliers=[1,1,1,1,1,1,1]))
+        #t = threading.Thread(target=run_tensorboard, args=([args.log_dir, args.pythonpath]))
+        #t.start()
+        model = Pix2pix(config=Config(args.batch_size, input_dimensions, args.log_dir, gen_conv1_filters=64, dis_conv1_filters=8, link_flags=[False, False, False, False, True, False, False], dis_filter_multipliers=[2,4,8], gen_filter_multipliers=[1,1.0/16,2,8,16,32,128], smooth=0.0, sgd_lr=None, l1_lambda=100))
         run_model(args.run_mode, args.epochs, args.split_ratio)
 
     else:

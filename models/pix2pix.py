@@ -18,6 +18,7 @@ class Config(object):
     gen_train_times = None
     dis_filter_multipliers = None
     gen_filter_multipliers = None
+    sgd_lr = None
 
     l1_lambda = None
     smooth = None
@@ -41,7 +42,8 @@ class Config(object):
                  link_flags=[True for _ in range(7)],
                  gen_train_times=1,
                  dis_filter_multipliers=[2,4,8],
-                 gen_filter_multipliers=[2,4,8,8,8,8,8]):
+                 gen_filter_multipliers=[2,4,8,8,8,8,8],
+                 sgd_lr=None):
         self.batch_size = batch_size
         self.input_dimensions = input_dimensions
         self.log_dir = log_dir
@@ -55,12 +57,14 @@ class Config(object):
         self.gen_train_times = gen_train_times
         self.dis_filter_multipliers = dis_filter_multipliers
         self.gen_filter_multipliers = gen_filter_multipliers
+        self.sgd_lr = sgd_lr
 
         # Compute Compression Rate
         h = input_dimensions.height
         w = input_dimensions.width
         gf = gen_conv1_filters
         compressed_size = (h/256)*(w/256)*gf*gen_filter_multipliers[6]
+        print("e8 depth: " + str(compressed_size))
         if link_flags[0]:
             compressed_size += (h/128)*(w/128)*gf*gen_filter_multipliers[5]
         if link_flags[1]:
@@ -71,6 +75,7 @@ class Config(object):
             compressed_size += (h/16)*(w/16)*gf*gen_filter_multipliers[2]
         if link_flags[4]:
             compressed_size += (h/8)*(w/8)*gf*gen_filter_multipliers[1]
+            print("links number 3: dim=" + str(h/8) + " depth=" + str(gf*gen_filter_multipliers[1]))
         if link_flags[5]:
             compressed_size += (h/4)*(w/4)*gf*gen_filter_multipliers[0]
         if link_flags[6]:
@@ -166,8 +171,14 @@ class Pix2pix(object):
         with tf.Session() as sess:
 
             # Optimizer for Discriminator
-            dis_optimizer = tf.train.AdamOptimizer(self._config.learning_rate, beta1=self._config.momentum).minimize(
-                self._ops.dis_loss, var_list=self._ops.dis_vars)
+            dis_optimizer = None
+            if self._config.sgd_lr != None:
+                dis_optimizer = tf.train.GradientDescentOptimizer(self._config.sgd_lr).minimize(
+                    self._ops.dis_loss, var_list=self._ops.dis_vars)
+            else:
+                print("using adam..")
+                dis_optimizer = tf.train.AdamOptimizer(self._config.learning_rate, beta1=self._config.momentum).minimize(
+                    self._ops.dis_loss, var_list=self._ops.dis_vars)
 
             # Optimizer for Generator
             gen_optimizer = tf.train.AdamOptimizer(self._config.learning_rate, beta1=self._config.momentum).minimize(
@@ -205,7 +216,7 @@ class Pix2pix(object):
                     print("Load failed...")
 
             window = 100
-            pretrain_epochs = 1
+            pretrain_epochs = 2
             gen_l1_losses = list(100 for _ in range(window))
             gen_l1_losses_index = 0
             pre_train = True
@@ -324,8 +335,13 @@ class Pix2pix(object):
         print("dis_fake_logits = " + str(dis_fake_logits))
 
         # Loss functions
+        real_labels = None
+        if self._config.smooth != 0.0:
+            real_labels = tf.random_uniform(tf.shape(dis_real_pred), minval= 1.0 - self._config.smooth, maxval=1.0)
+        else:
+            real_labels = tf.ones_like(dis_real_pred)
         self._ops.dis_real_loss = tf.reduce_mean(
-            tf.nn.sigmoid_cross_entropy_with_logits(logits=dis_real_logits, labels=tf.ones_like(dis_real_pred)*(1-self._config.smooth)))
+            tf.nn.sigmoid_cross_entropy_with_logits(logits=dis_real_logits, labels=real_labels))
         self._ops.dis_fake_loss = tf.reduce_mean(
             tf.nn.sigmoid_cross_entropy_with_logits(logits=dis_fake_logits, labels=tf.zeros_like(dis_fake_pred)))
         self._ops.dis_loss = self._ops.dis_fake_loss + self._ops.dis_real_loss
@@ -405,44 +421,44 @@ class Pix2pix(object):
 
             # Encoder
             e1 = conv2d(image, self.gen_dim, name='g_e1_conv')
-            e2 = batch_norm(conv2d(lrelu(e1), self.gen_dim * self._config.gen_filter_multipliers[0], name='g_e2_conv'), name='g_bn_e2')
-            e3 = batch_norm(conv2d(lrelu(e2), self.gen_dim * self._config.gen_filter_multipliers[1], name='g_e3_conv'), name='g_bn_e3')
-            e4 = batch_norm(conv2d(lrelu(e3), self.gen_dim * self._config.gen_filter_multipliers[2], name='g_e4_conv'), name='g_bn_e4')
-            e5 = batch_norm(conv2d(lrelu(e4), self.gen_dim * self._config.gen_filter_multipliers[3], name='g_e5_conv'), name='g_bn_e5')
-            e6 = batch_norm(conv2d(lrelu(e5), self.gen_dim * self._config.gen_filter_multipliers[4], name='g_e6_conv'), name='g_bn_e6')
-            e7 = batch_norm(conv2d(lrelu(e6), self.gen_dim * self._config.gen_filter_multipliers[5], name='g_e7_conv'), name='g_bn_e7')
-            e8 = batch_norm(conv2d(lrelu(e7), self.gen_dim * self._config.gen_filter_multipliers[6], name='g_e8_conv'), name='g_bn_e8')
+            e2 = batch_norm(conv2d(lrelu(e1), int(self.gen_dim * self._config.gen_filter_multipliers[0]), name='g_e2_conv'), name='g_bn_e2')
+            e3 = batch_norm(conv2d(lrelu(e2), int(self.gen_dim * self._config.gen_filter_multipliers[1]), name='g_e3_conv'), name='g_bn_e3')
+            e4 = batch_norm(conv2d(lrelu(e3), int(self.gen_dim * self._config.gen_filter_multipliers[2]), name='g_e4_conv'), name='g_bn_e4')
+            e5 = batch_norm(conv2d(lrelu(e4), int(self.gen_dim * self._config.gen_filter_multipliers[3]), name='g_e5_conv'), name='g_bn_e5')
+            e6 = batch_norm(conv2d(lrelu(e5), int(self.gen_dim * self._config.gen_filter_multipliers[4]), name='g_e6_conv'), name='g_bn_e6')
+            e7 = batch_norm(conv2d(lrelu(e6), int(self.gen_dim * self._config.gen_filter_multipliers[5]), name='g_e7_conv'), name='g_bn_e7')
+            e8 = batch_norm(conv2d(lrelu(e7), int(self.gen_dim * self._config.gen_filter_multipliers[6]), name='g_e8_conv'), name='g_bn_e8')
 
             print("e9 dimension: " + str(e8.get_shape()))
 
             # Decoder
             d1 = tf.nn.dropout(batch_norm(deconv2d(tf.nn.relu(e8),
-                                                   [self._config.batch_size, h128, w128, self.gen_dim * self._config.gen_filter_multipliers[5]],
+                                                   [self._config.batch_size, h128, w128, int(self.gen_dim * self._config.gen_filter_multipliers[5])],
                                                    name='g_d1'), name='g_bn_d1'), 0.5)
-            if link_flags[0]:                                         
+            if link_flags[0]:
                 d1 = tf.concat([d1, e7], 3)
             d2 = tf.nn.dropout(batch_norm(deconv2d(tf.nn.relu(d1),
-                                                   [self._config.batch_size, h64, w64, self.gen_dim * self._config.gen_filter_multipliers[4]],
+                                                   [self._config.batch_size, h64, w64, int(self.gen_dim * self._config.gen_filter_multipliers[4])],
                                                    name='g_d2'), name='g_bn_d2'), 0.5)
             if link_flags[1]:                                         
                 d2 = tf.concat([d2, e6], 3)
             d3 = tf.nn.dropout(batch_norm(deconv2d(tf.nn.relu(d2),
-                                                   [self._config.batch_size, h32, w32, self.gen_dim * self._config.gen_filter_multipliers[3]],
+                                                   [self._config.batch_size, h32, w32, int(self.gen_dim * self._config.gen_filter_multipliers[3])],
                                                    name='g_d3'), name='g_bn_d3'), 0.5)
             if link_flags[2]:                                        
                 d3 = tf.concat([d3, e5], 3)
             d4 = tf.nn.dropout(batch_norm(deconv2d(tf.nn.relu(d3),
-                                                   [self._config.batch_size, h16, w16, self.gen_dim * self._config.gen_filter_multipliers[2]],
+                                                   [self._config.batch_size, h16, w16, int(self.gen_dim * self._config.gen_filter_multipliers[2])],
                                                    name='g_d4'), name='g_bn_d4'), 0.5)
             if link_flags[3]: 
                 d4 = tf.concat([d4, e4], 3)
             d5 = batch_norm(deconv2d(tf.nn.relu(d4),
-                                     [self._config.batch_size, h8, w8, self.gen_dim * self._config.gen_filter_multipliers[1]],
+                                     [self._config.batch_size, h8, w8, int(self.gen_dim * self._config.gen_filter_multipliers[1])],
                                      name='g_d5'), name='g_bn_d5')
             if link_flags[4]: 
                 d5 = tf.concat([d5, e3], 3)
             d6 = batch_norm(deconv2d(tf.nn.relu(d5),
-                                     [self._config.batch_size, h4, w4, self.gen_dim * self._config.gen_filter_multipliers[0]],
+                                     [self._config.batch_size, h4, w4, int(self.gen_dim * self._config.gen_filter_multipliers[0])],
                                      name='g_d6'), name='g_bn_d6')
             if link_flags[5]: 
                 d6 = tf.concat([d6, e2], 3)
