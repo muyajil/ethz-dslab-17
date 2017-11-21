@@ -52,8 +52,9 @@ def get_jpeg_encoded_image(raw_image, quality):
     ImageFile.MAXBLOCK = 2**20
     rescaled_image = (raw_image/(2**16/255)).astype('uint8').squeeze()
     img = Image.fromarray(rescaled_image, 'L')
-    img.save("out_{}.jpg".format(quality), "JPEG", quality=quality, optimize=True, progressive=True)
-    img = Image.open("out_{}.jpg".format(quality))
+    img.save("out.jpg", "JPEG", quality=quality, optimize=True, progressive=True)
+    img = Image.open("out.jpg")
+    os.remove("out.jpg")
     return np.array(img), os.path.getsize("out_{}.jpg".format(quality))
 
 
