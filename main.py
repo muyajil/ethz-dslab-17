@@ -83,7 +83,8 @@ if __name__ == "__main__":
         # TODO: explicitly construct new session and graph
         # TODO: Give the model a name based on the config
         # TODO: Rethink model config
-        model = Pix2pix(config=Config(args.batch_size, input_dimensions, args.log_dir, gen_conv1_filters=64, dis_conv1_filters=8, link_flags=[False, False, True, True, True, False, False], dis_filter_multipliers=[2,4,8], gen_filter_multipliers=[16, 4 , 1 , 1 , 1 , 4 , 16], smooth=0.0, sgd_lr=None, l1_lambda=100))
+        # TODO: Easiest would probably be to have an array of config objects and then run models for each of those.
+        model = Pix2pix(config=Config(args.batch_size, input_dimensions, args.log_dir, gen_conv1_filters=32, dis_conv1_filters=8, link_flags=[False, False, True, True, True, False, False], dis_filter_multipliers=[2,4,8], gen_filter_multipliers=[32, 8 , 1 , 1 , 1 , 8 , 32], smooth=0.0, sgd_lr=None, l1_lambda=100))
         run_model(args.run_mode, args.epochs, args.split_ratio)
 
     else:
