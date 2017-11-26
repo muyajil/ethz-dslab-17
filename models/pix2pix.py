@@ -19,6 +19,7 @@ class Config(object):
     dis_filter_multipliers = None
     gen_filter_multipliers = None
     sgd_lr = None
+    gen_dropout = None
 
     l1_lambda = None
     smooth = None
@@ -43,7 +44,8 @@ class Config(object):
                  gen_train_times=1,
                  dis_filter_multipliers=[2,4,8],
                  gen_filter_multipliers=[2,4,8,8,8,8,8],
-                 sgd_lr=None):
+                 sgd_lr=None,
+                 gen_dropout=0.5):
         self.batch_size = batch_size
         self.input_dimensions = input_dimensions
         self.log_dir = log_dir
@@ -58,6 +60,7 @@ class Config(object):
         self.dis_filter_multipliers = dis_filter_multipliers
         self.gen_filter_multipliers = gen_filter_multipliers
         self.sgd_lr = sgd_lr
+        self.gen_dropout = gen_dropout
 
         # Compute Compression Rate
         h = input_dimensions.height
@@ -434,22 +437,22 @@ class Pix2pix(object):
             # Decoder
             d1 = tf.nn.dropout(batch_norm(deconv2d(tf.nn.relu(e8),
                                                    [self._config.batch_size, h128, w128, int(self.gen_dim * self._config.gen_filter_multipliers[5])],
-                                                   name='g_d1'), name='g_bn_d1'), 0.5)
+                                                   name='g_d1'), name='g_bn_d1'), self._config.gen_dropout)
             if link_flags[0]:
                 d1 = tf.concat([d1, e7], 3)
             d2 = tf.nn.dropout(batch_norm(deconv2d(tf.nn.relu(d1),
                                                    [self._config.batch_size, h64, w64, int(self.gen_dim * self._config.gen_filter_multipliers[4])],
-                                                   name='g_d2'), name='g_bn_d2'), 0.5)
+                                                   name='g_d2'), name='g_bn_d2'), self._config.gen_dropout)
             if link_flags[1]:                                         
                 d2 = tf.concat([d2, e6], 3)
             d3 = tf.nn.dropout(batch_norm(deconv2d(tf.nn.relu(d2),
                                                    [self._config.batch_size, h32, w32, int(self.gen_dim * self._config.gen_filter_multipliers[3])],
-                                                   name='g_d3'), name='g_bn_d3'), 0.5)
+                                                   name='g_d3'), name='g_bn_d3'), self._config.gen_dropout)
             if link_flags[2]:                                        
                 d3 = tf.concat([d3, e5], 3)
             d4 = tf.nn.dropout(batch_norm(deconv2d(tf.nn.relu(d3),
                                                    [self._config.batch_size, h16, w16, int(self.gen_dim * self._config.gen_filter_multipliers[2])],
-                                                   name='g_d4'), name='g_bn_d4'), 0.5)
+                                                   name='g_d4'), name='g_bn_d4'), self._config.gen_dropout)
             if link_flags[3]: 
                 d4 = tf.concat([d4, e4], 3)
             d5 = batch_norm(deconv2d(tf.nn.relu(d4),

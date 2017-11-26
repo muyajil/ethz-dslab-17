@@ -77,14 +77,14 @@ if __name__ == "__main__":
     dataset.initialize(dataset_config, args.base_path, input_dimensions, args.batch_size)
 
     if EXPERIMENT:
-        #t = threading.Thread(target=run_tensorboard, args=([args.log_dir, args.pythonpath]))
-        #t.start()
+        t = threading.Thread(target=run_tensorboard, args=([args.log_dir, args.pythonpath]))
+        t.start()
         # TODO: Move session object out of model class
         # TODO: explicitly construct new session and graph
         # TODO: Give the model a name based on the config
         # TODO: Rethink model config
         # TODO: Easiest would probably be to have an array of config objects and then run models for each of those.
-        model = Pix2pix(config=Config(args.batch_size, input_dimensions, args.log_dir, gen_conv1_filters=32, dis_conv1_filters=8, link_flags=[False, False, True, True, True, False, False], dis_filter_multipliers=[2,4,8], gen_filter_multipliers=[32, 8 , 1 , 1 , 1 , 8 , 32], smooth=0.0, sgd_lr=None, l1_lambda=100))
+        model = Pix2pix(config=Config(args.batch_size, input_dimensions, args.log_dir, gen_conv1_filters=16, dis_conv1_filters=64, link_flags=[True, False, True, False, True, False, False], dis_filter_multipliers=[2,4,8], gen_filter_multipliers=[2, 1.0/8 , 8 , 16 , 32 , 64 , 128], smooth=0.3, sgd_lr=0.0002, l1_lambda=1, gen_dropout=0.8))
         run_model(args.run_mode, args.epochs, args.split_ratio)
 
     else:
