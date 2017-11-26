@@ -134,9 +134,9 @@ class Res2pix(object):
                     
                 print("Epoch: [%2d]\tTrain Step: [%2d]\tBatch: [%2d]\tTime: %4.4f" % (epoch + 1, train_step, batch_num + 1,  time.time() - start_time))
                 
-                if train_step % 100 == 0:
+                if train_step % 10 == 0:
                     for batch in validation_set.batch_iter(stop_after_epoch=True):
-                        summary_str = sess.run([self._ops.val_summary], feed_dict={self._ops.in_img: batch})
+                        summary_str = sess.run(self._ops.val_summary, feed_dict={self._ops.in_img: batch})
                         writer.add_summary(summary_str, global_step=train_step)
 
                 train_step += 1
