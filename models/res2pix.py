@@ -41,7 +41,7 @@ class Config(object):
                  gen_lambda=100,
                  adam_beta1=0.5,
                  learning_rate=0.0002,
-                 pretrain_epochs=2):
+                 pretrain_epochs=1):
                      
         self.batch_size = batch_size
         self.input_dimensions = input_dimensions
@@ -138,6 +138,7 @@ class Res2pix(object):
                     for batch in validation_set.batch_iter(stop_after_epoch=True):
                         summary_str = sess.run(self._ops.val_summary, feed_dict={self._ops.in_img: batch})
                         writer.add_summary(summary_str, global_step=train_step)
+                        break # we only do one batch for convenience
 
                 train_step += 1
         writer.close()
