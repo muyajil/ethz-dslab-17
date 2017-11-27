@@ -245,7 +245,9 @@ class Res2pix(object):
         with tf.variable_scope(name):
 
             batchsize, height, width, channels = res_in.get_shape().as_list()
+            print(str(height))
             c_height = height / 8
+            print(str(c_height))
             c_width = width / 8
             
             # encoder
