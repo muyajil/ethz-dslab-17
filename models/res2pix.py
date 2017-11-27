@@ -232,12 +232,12 @@ class Res2pix(object):
     def _generator(self, image):
         with tf.variable_scope("generator") as scope:
             
-            stage_preds = list(self._config.stages)
-            res = list(self._config.stages)
-            res[0] = image
+            stage_preds = []
+            res = []
+            res.append(image)
             for s in range(self._config.stages + 1)[1:]:
-                stage_preds[s-1] = _residual_encoder_stage(res[s-1])
-                res[s] = res[s-1] - stage_preds[s-1]
+                stage_preds.append(_residual_encoder_stage(res[s-1]))
+                res.append(res[s-1] - stage_preds[s-1])
             return stage_preds, res
             
             
