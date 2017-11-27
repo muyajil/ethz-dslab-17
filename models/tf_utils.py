@@ -1,4 +1,5 @@
 import tensorflow as tf
+from tensorflow.python.framework import ops
 
 
 def batch_norm(x,
@@ -80,6 +81,18 @@ def linear(input_, output_size, scope=None, stddev=0.02, bias_start=0.0, with_w=
             return tf.matmul(input_, matrix) + bias, matrix, bias
         else:
             return tf.matmul(input_, matrix) + bias
+            
+def binarization(x):
+    g = tf.get_default_graph()
+    with ops.name_scope("Binarization") as name:
+        with g.gradient_override_map({"Ceil": "Identity", "Sub": "CustomGrad", "Div": "CustomGrad", "Add": "CustomGrad", "Mul": "CustomGrad"}):
+            scaled_x = (x + 1) / 2
+            binary_x = tf.ceil(scaled_x - tf.random_uniform(tf.shape(x)), name=name)
+            return (binary_x * 2) - 1
+       
+@ops.RegisterGradient("CustomGrad")
+def customGrad(op, grad):
+    return [grad, tf.zeros(tf.shape(op.inputs[1]))]
 
 
 def psnr(original, reconstructed, peak=1.0, scope=None):
