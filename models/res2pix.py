@@ -245,10 +245,8 @@ class Res2pix(object):
         with tf.variable_scope(name):
 
             batchsize, height, width, channels = res_in.get_shape().as_list()
-            print(str(height))
-            c_height = height / 8
-            print(str(c_height))
-            c_width = width / 8
+            c_height = int(height / 8)
+            c_width = int(width / 8)
             
             # encoder
             e1 = tf.nn.relu(batch_norm(conv2d(res_in, 64, kernel_height=3, kernel_width=3, stride_height=1, stride_width=1, stddev=0.02, name='g_e1_conv'), name='g_bn_e1'))
