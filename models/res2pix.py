@@ -158,7 +158,7 @@ class Res2pix(object):
         # architecture
         gen_res_preds, gen_residuals = self._generator(self._ops.in_img)
         gen_out = 0
-        for res_pred in len(gen_res_preds):
+        for res_pred in gen_res_preds:
             gen_out += res_pred
             
         dis_out_real, dis_logits_real = self._discriminator(self._ops.in_img, reuse=False)
