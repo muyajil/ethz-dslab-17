@@ -244,7 +244,7 @@ class Res2pix(object):
     def _residual_encoder_stage(self, res_in, name="stage"):
         with tf.variable_scope(name):
 
-            batchsize, height, width, channels = tf.shape(res_in)
+            batchsize, height, width, channels = res_in.get_shape()
             c_height = height / 8
             c_width = width / 8
             
