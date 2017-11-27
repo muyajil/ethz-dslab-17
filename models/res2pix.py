@@ -20,12 +20,13 @@ class Config(object):
     """Configuration for model
     """
 
-    # parameters for logging
+    # parameters for loging
     log_dir = None
     
     # parameters for architecture
     batch_size = None
     input_dimensions = None
+    stages = None
 
     # parameters for training
     learning_rate = None
@@ -41,7 +42,8 @@ class Config(object):
                  gen_lambda=100,
                  adam_beta1=0.5,
                  learning_rate=0.0002,
-                 pretrain_epochs=1):
+                 pretrain_epochs=1,
+                 stages=1):
                      
         self.batch_size = batch_size
         self.input_dimensions = input_dimensions
@@ -50,6 +52,7 @@ class Config(object):
         self.learning_rate = learning_rate
         self.gen_lambda = gen_lambda
         self.pretrain_epochs = pretrain_epochs
+        self.stages = stages
 
 
 class Ops(object):
@@ -226,31 +229,51 @@ class Res2pix(object):
             return tf.nn.sigmoid(h4), h4
             
             
-    def _residual_encoder(self, image):
-        stages = 6
+    def _generator(self, image):
         with tf.variable_scope("generator") as scope:
             
-            res[0] = image
             stage_preds = []
-            for s in range(stages)[1:]:
+            res = []
+            res[0] = image
+            for s in range(self._config.stages + 1)[1:]:
                 stage_preds[s-1] = _residual_encoder_stage(res[s-1])
                 res[s] = res[s-1] - stage_preds[s-1]
             return stage_preds, res
             
             
-    def _residual_encoder_stage(self, res_in):
-        e1 = tf.nn.relu(batch_norm(conv2d(res_in, 64, kernel_height=3, kernel_width=3, stride_height=1, stride_width=1, stddev=0.02, name='g_e1_conv'), name='g_bn_e1'))
-        e2 = tf.nn.relu(batch_norm(conv2d(e1, 128, kernel_height=3, kernel_width=3, stride_height=2, stride_width=2, stddev=0.02, name='g_e2_conv'), name='g_bn_e2'))
-        e3 = tf.nn.relu(batch_norm(conv2d(e2, 128, kernel_height=3, kernel_width=3, stride_height=1, stride_width=1, stddev=0.02, name='g_e3_conv'), name='g_bn_e3'))
-        e4 = tf.nn.relu(batch_norm(conv2d(e3, 256, kernel_height=3, kernel_width=3, stride_height=2, stride_width=2, stddev=0.02, name='g_e4_conv'), name='g_bn_e4'))
-        e5 = tf.nn.relu(batch_norm(conv2d(e4, 256, kernel_height=3, kernel_width=3, stride_height=1, stride_width=1, stddev=0.02, name='g_e5_conv'), name='g_bn_e5'))
-        e6 = tf.nn.relu(batch_norm(conv2d(e5, 256, kernel_height=3, kernel_width=3, stride_height=2, stride_width=2, stddev=0.02, name='g_e6_conv'), name='g_bn_e6'))
-        e7 = tf.nn.tanh(conv2d(e6, 8, kernel_height=1, kernel_width=1, stride_height=2, stride_width=2, stddev=0.02, name='g_e6_conv'))
+    def _residual_encoder_stage(self, res_in, name="stage"):
+        with tf.variable_scope(name):
 
-
-        res_out = None
-        return res_out
+            batchsize, height, width, channels = tf.shape(res_in)
+            c_height = height / 8
+            c_width = width / 8
             
+            # encoder
+            e1 = tf.nn.relu(batch_norm(conv2d(res_in, 64, kernel_height=3, kernel_width=3, stride_height=1, stride_width=1, stddev=0.02, name='g_e1_conv'), name='g_bn_e1'))
+            e2 = tf.nn.relu(batch_norm(conv2d(e1, 128, kernel_height=3, kernel_width=3, stride_height=2, stride_width=2, stddev=0.02, name='g_e2_conv'), name='g_bn_e2'))
+            e3 = tf.nn.relu(batch_norm(conv2d(e2, 128, kernel_height=3, kernel_width=3, stride_height=1, stride_width=1, stddev=0.02, name='g_e3_conv'), name='g_bn_e3'))
+            e4 = tf.nn.relu(batch_norm(conv2d(e3, 256, kernel_height=3, kernel_width=3, stride_height=2, stride_width=2, stddev=0.02, name='g_e4_conv'), name='g_bn_e4'))
+            e5 = tf.nn.relu(batch_norm(conv2d(e4, 256, kernel_height=3, kernel_width=3, stride_height=1, stride_width=1, stddev=0.02, name='g_e5_conv'), name='g_bn_e5'))
+            e6 = tf.nn.relu(batch_norm(conv2d(e5, 256, kernel_height=3, kernel_width=3, stride_height=2, stride_width=2, stddev=0.02, name='g_e6_conv'), name='g_bn_e6'))
+            e7 = tf.nn.tanh(conv2d(e6, 8, kernel_height=1, kernel_width=1, stride_height=1, stride_width=1, stddev=0.02, name='g_e6_conv'))
+            
+            # binarization
+            b = binarization(e7)
+    
+            # decoder
+            d1 = conv2d(b, 256, kernel_height=3, kernel_width=3, stride_height=1, stride_width=1, stddev=0.02, name='g_d1_conv')
+            d2 = tf.nn.relu(batch_norm(conv2d(d1, 256, kernel_height=3, kernel_width=3, stride_height=1, stride_width=1, stddev=0.02, name='g_d2_conv'), name='g_bn_d2'))
+            d3 = deconv2d(d2, [self._config.batch_size, c_height*2, c_width*2, 256], kernel_height=2, kernel_width=2, stride_height=2, stride_width=2, stddev=0.02, name="g_d3_deconv")
+            d4 = tf.nn.relu(batch_norm(conv2d(d3, 128, kernel_height=3, kernel_width=3, stride_height=1, stride_width=1, stddev=0.02, name='g_d4_conv'), name='g_bn_d4'))
+            d5 = deconv2d(d4, [self._config.batch_size, c_height*4, c_width*4, 128], kernel_height=2, kernel_width=2, stride_height=2, stride_width=2, stddev=0.02, name="g_d5_deconv")
+            d6 = tf.nn.relu(batch_norm(conv2d(d5, 64, kernel_height=3, kernel_width=3, stride_height=1, stride_width=1, stddev=0.02, name='g_d6_conv'), name='g_bn_d6'))
+            d7 = deconv2d(d6, [self._config.batch_size, c_height*8, c_width*8, 64], kernel_height=2, kernel_width=2, stride_height=2, stride_width=2, stddev=0.02, name="g_d7_deconv")
+            d8 = tf.nn.tanh(conv2d(d7, channels, kernel_height=3, kernel_width=3, stride_height=1, stride_width=1, stddev=0.02, name='g_d8_conv'))
+    
+            return d8
+            
+            
+'''
     def _generator_pix2pix(self, image):
         with tf.variable_scope("generator") as scope:
             o_c = self._config.input_dimensions.depth
@@ -262,7 +285,7 @@ class Res2pix(object):
                 int(o_w / 2), int(o_w / 4), int(o_w / 8), int(o_w / 16), int(o_w / 32), int(o_w / 64), int(o_w / 128)
 
             # encoder
-            e1 = conv2d(image, 64, name='g_e1_conv')
+            e1 = conv2d(image, 64, name='g_e1_conv') 
             e2 = batch_norm(conv2d(lrelu(e1), 64 * 2, name='g_e2_conv'), name='g_bn_e2')
             e3 = batch_norm(conv2d(lrelu(e2), 64 * 4, name='g_e3_conv'), name='g_bn_e3')
             e4 = batch_norm(conv2d(lrelu(e3), 64 * 8, name='g_e4_conv'), name='g_bn_e4')
@@ -281,5 +304,4 @@ class Res2pix(object):
             d7 = tf.concat([batch_norm(deconv2d(tf.nn.relu(d6), [self._config.batch_size, h2, w2, 64], name='g_d7'), name='g_bn_d7'), e1], 3)
             d8 = deconv2d(tf.nn.relu(d7), [self._config.batch_size, o_h, o_w, o_c], name='g_d8')
             return tf.nn.tanh(d8)
-
-
+'''
