@@ -172,8 +172,8 @@ class Res2pix(object):
         
         # Residual encoder loss
         stage_losses = []
-        for i in range(len(gen_residuals)):
-            stage_losses.append(tf.reduce_sum(tf.square(gen_residuals[i] - gen_res_preds[i])))
+        for res in gen_residuals[1:]:
+            stage_losses.append(tf.reduce_sum(tf.square(res)))
         self._ops.gen_loss_reconstr = tf.reduce_sum(tf.convert_to_tensor(stage_losses))
 
         self._ops.gen_loss = self._ops.gen_loss_adv + self._config.gen_lambda * self._ops.gen_loss_reconstr
