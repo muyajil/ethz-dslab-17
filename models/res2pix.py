@@ -224,7 +224,7 @@ class Res2pix(object):
             psnr = sum(avg_psnrs)/len(avg_psnrs)
             mssim = sum(avg_mssims)/len(avg_mssims)
             bpp = sum(avg_bpps)/len(avg_bpps)
-            qualities.append(bpp, psnr, mssim)
+            qualities.append((bpp, psnr, mssim))
             
         return sorted(qualities, key=lambda x: x[0])
                     
