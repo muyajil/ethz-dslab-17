@@ -64,5 +64,5 @@ if __name__ == "__main__":
                                     pretrain_epochs=30,
                                     debug=True,
                                     gen_lambda=1,
-                                    learning_rate=1.0))
+                                    learning_rate=0.000001))
     run_model(args.epochs, args.split_ratio)
