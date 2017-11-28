@@ -19,6 +19,8 @@ by Mohammad Haris Baig, Vladlen Koltun, and Lorenzo Torresani
 class Config(object):
     """Configuration for model
     """
+    
+    debug = None
 
     # parameters for loging
     log_dir = None
@@ -43,7 +45,8 @@ class Config(object):
                  adam_beta1=0.5,
                  learning_rate=0.0002,
                  pretrain_epochs=1,
-                 stages=1):
+                 stages=1,
+                 debug=False):
                      
         self.batch_size = batch_size
         self.input_dimensions = input_dimensions
@@ -53,6 +56,7 @@ class Config(object):
         self.gen_lambda = gen_lambda
         self.pretrain_epochs = pretrain_epochs
         self.stages = stages
+        self.debug = debug
 
 
 class Ops(object):
@@ -154,7 +158,7 @@ class Res2pix(object):
                                                             self._config.input_dimensions.height,
                                                             self._config.input_dimensions.width,
                                                             self._config.input_dimensions.depth])
-
+                                                            
         # architecture
         gen_res_preds, gen_residuals = self._generator(self._ops.in_img)
         gen_out = 0
@@ -212,6 +216,15 @@ class Res2pix(object):
         
         # initialization
         self._ops.init_op = tf.global_variables_initializer()
+        
+        # debug
+        if self._config.debug:
+            print("Shape of input placeholder = " + str(self._ops.in_img.get_shape()))
+            print("Number of residuals (including input image) = " + str(len(gen_residuals)))
+            print("Shape of first residual prediction = " + str(gen_res_preds[0].get_shape()))
+            print("Shape of first residual = " + str(gen_residuals[0].get_shape()))
+            print("Shape of generator output = " + str(gen_out.get_shape()))
+            print("Shape of discriminator (fake) output = " + str(dis_out_fake.get_shape()))
 
 
     def _discriminator(self, image, reuse=False):
@@ -269,6 +282,26 @@ class Res2pix(object):
             d6 = tf.nn.relu(batch_norm(conv2d(d5, 64, kernel_height=3, kernel_width=3, stride_height=1, stride_width=1, stddev=0.02, name='g_d6_conv'), name='g_bn_d6'))
             d7 = deconv2d(d6, [self._config.batch_size, c_height*8, c_width*8, 64], kernel_height=2, kernel_width=2, stride_height=2, stride_width=2, stddev=0.02, name="g_d7_deconv")
             d8 = tf.nn.tanh(conv2d(d7, channels, kernel_height=3, kernel_width=3, stride_height=1, stride_width=1, stddev=0.02, name='g_d8_conv'))
+    
+            # debug
+            if self._config.debug:
+                print("Stage: Shape of input = " + str(res_in.get_shape()))
+                print("Stage: Shape of e1 = " + str(e1.get_shape()))
+                print("Stage: Shape of e2 = " + str(e2.get_shape()))
+                print("Stage: Shape of e3 = " + str(e3.get_shape()))
+                print("Stage: Shape of e4 = " + str(e4.get_shape()))
+                print("Stage: Shape of e5 = " + str(e5.get_shape()))
+                print("Stage: Shape of e6 = " + str(e6.get_shape()))
+                print("Stage: Shape of e7 = " + str(e7.get_shape()))
+                print("Stage: Shape of binary representation = " + str(b.get_shape()))
+                print("Stage: Shape of d1 = " + str(d1.get_shape()))
+                print("Stage: Shape of d2 = " + str(d2.get_shape()))
+                print("Stage: Shape of d3 = " + str(d3.get_shape()))
+                print("Stage: Shape of d4 = " + str(d4.get_shape()))
+                print("Stage: Shape of d5 = " + str(d5.get_shape()))
+                print("Stage: Shape of d6 = " + str(d6.get_shape()))
+                print("Stage: Shape of d7 = " + str(d7.get_shape()))
+                print("Stage: Shape of d8 = " + str(d8.get_shape()))
     
             return d8
             
