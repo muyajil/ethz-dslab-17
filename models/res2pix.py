@@ -220,7 +220,7 @@ class Res2pix(object):
         gen_vars = [var for var in train_vars if 'g_' in var.name]
 
         dis_opti = tf.train.AdamOptimizer(self._config.learning_rate, beta1=self._config.adam_beta1)
-        dis_grads_and_vars = dis_opti.compute_gradients((self._ops.dis_loss, var_list=dis_vars)
+        dis_grads_and_vars = dis_opti.compute_gradients(self._ops.dis_loss, var_list=dis_vars)
         self._ops.dis_optimizer = dis_opti.apply_gradients(dis_grads_and_vars)
         
         gen_opti = tf.train.AdamOptimizer(self._config.learning_rate, beta1=self._config.adam_beta1)
