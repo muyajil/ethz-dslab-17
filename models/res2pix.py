@@ -191,7 +191,8 @@ class Res2pix(object):
             avg_mssims = []
             avg_bpps = []
             for batch in validation_set.batch_iter(stop_after_epoch=True):
-                originals = sess.run([self._ops.in_img], feed_dict={self._ops.in_img: batch})
+                originals = sess.run(self._ops.in_img, feed_dict={self._ops.in_img: batch})
+                
                 original_size_pixel = originals.shape[1] * originals.shape[2]
                 
                 psnrs = []
