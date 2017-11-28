@@ -201,7 +201,7 @@ class Res2pix(object):
                 for i in range(self._config.batch_size):
                     
                     # get jpeg reconstruction
-                    pil_original = Image.fromarray(np.reshape(originals[i], (originals[i].shape[0], originals[i].shape[1]) ), 'F') # set mode to F maybe
+                    pil_original = Image.fromarray(np.reshape(originals[i], (originals[i].shape[0], originals[i].shape[1]) )) # set mode to F maybe
                     pil_original.save("out.jpg", "JPEG", quality=quality, optimize=True, progressive=True)   
                     pil_jpeg = Image.open("out.jpg")
                     jpeg = np.array(pil_jpeg)
