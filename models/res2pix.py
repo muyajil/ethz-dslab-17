@@ -186,7 +186,7 @@ class Res2pix(object):
         
     def _evaluate_jpeg(self, sess, validation_set):
         qualities = []
-        for quality in range(100):
+        for quality in range(0, 101, 10)[1:]:
             print("measuring performance for quality = " + str(quality))
             avg_psnrs = []
             avg_mssims = []
@@ -225,6 +225,10 @@ class Res2pix(object):
             psnr = sum(avg_psnrs)/len(avg_psnrs)
             mssim = sum(avg_mssims)/len(avg_mssims)
             bpp = sum(avg_bpps)/len(avg_bpps)
+            print("bpp = " + str(bpp))
+            print("psnr = " + str(psnr))
+            print("mssim = " + str(mssim))
+
             qualities.append((bpp, psnr, mssim))
             
         print("length of qualities list = " + str(len(qualities)))
@@ -245,8 +249,8 @@ class Res2pix(object):
             psnrs = []
             mssims = []
             for i in range(self._config.batch_size):
-                psnrs.append(compare_psnr(originals[i], reconstructions[i], data_range=2))
-                mssims.append(compare_ssim(originals[i], reconstructions[i], data_range=2))
+                psnrs.append(compare_psnr(np.squeeze(originals[i]), np.squeeze(reconstructions[i]), data_range=2))
+                mssims.append(compare_ssim(np.squeeze(originals[i]), np.squeeze(reconstructions[i]), data_range=2))
             avg_psnr = sum(psnrs)/len(psnrs)
             avg_psnrs.append(avg_psnr)
             avg_mssim = sum(mssims)/len(mssims)
