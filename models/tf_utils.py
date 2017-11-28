@@ -29,7 +29,7 @@ def conv2d(input_,
         w = tf.get_variable('w',
                             [kernel_height, kernel_width, in_channels, out_channels],
                             #initializer=tf.truncated_normal_initializer(stddev=stddev))
-                            initializer=tf.contrib.layers.variance_scaling_initializer()
+                            initializer=tf.contrib.layers.variance_scaling_initializer())
         conv = tf.nn.conv2d(input_,
                             w,
                             strides=[1, stride_height, stride_width, 1],
