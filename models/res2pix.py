@@ -105,6 +105,7 @@ class Res2pix(object):
     _config = None
     _ops = Ops()
     _model_name = None
+    _code_bits = None
     
     
     def __init__(self, config=None, restore_path=None):
@@ -151,6 +152,11 @@ class Res2pix(object):
                         break # we only do one batch for convenience
 
                 train_step += 1
+                
+            # measuring compression metrics
+            bpp = float(self._code_bits) / (self._config.input_dimensions.height * self._config.input_dimensions.width)
+            print("Bits per Pixel = " + str(bpp))
+                
         writer.close()
 
 
@@ -195,8 +201,6 @@ class Res2pix(object):
         self._ops.gen_loss_adv_summary = tf.summary.scalar("gen_loss_adv", self._ops.gen_loss_adv)
         self._ops.gen_loss_reconstr_summary = tf.summary.scalar("gen_loss_reconstr", self._ops.gen_loss_reconstr)
         self._ops.gen_loss_summary = tf.summary.scalar("gen_loss", self._ops.gen_loss)
-        
-
         self._ops.dis_summary = tf.summary.merge([self._ops.dis_loss_real_summary,
                                                   self._ops.dis_out_real_histo,
                                                   self._ops.dis_loss_summary])
@@ -206,7 +210,6 @@ class Res2pix(object):
                                                   self._ops.gen_loss_reconstr_summary,
                                                   self._ops.gen_loss_summary])
         self._ops.gen_reconstr_summary = tf.summary.merge([self._ops.gen_loss_reconstr_summary])
-        
         self._ops.val_psnr_summary = tf.summary.scalar("val_psnr", self._ops.psnr)
         self._ops.val_bitcode_histo = tf.summary.histogram("val_bitcode_histogram", self._ops.binary_representations)
         self._ops.val_in_out_img_summary = tf.summary.image("val_in_out_img", tf.concat([self._ops.in_img, gen_out], 1))
@@ -268,6 +271,13 @@ class Res2pix(object):
             for s in range(self._config.stages + 1)[1:]:
                 stage_preds.append(self._residual_encoder_stage(res[s-1], name="stage_" + str(s)))
                 res.append(res[s-1] - stage_preds[s-1])
+                
+            # compute bpp
+            bin_dim = 1
+            for dim in self._ops.binary_representations[0].get_shape().as_list()[1:]:
+                bin_dim *= dim
+            self._code_bits = (bin_dim * self._config.stages)
+                
             return stage_preds, res
             
             
@@ -289,7 +299,7 @@ class Res2pix(object):
             
             # binarization
             self._ops.binary_representations.append(binarization(e7))
-    
+
             # decoder
             d1 = conv2d(self._ops.binary_representations[-1], 256, kernel_height=3, kernel_width=3, stride_height=1, stride_width=1, stddev=0.02, name='g_d1_conv')
             d2 = tf.nn.relu(batch_norm(conv2d(d1, 256, kernel_height=3, kernel_width=3, stride_height=1, stride_width=1, stddev=0.02, name='g_d2_conv'), name='g_bn_d2'))
