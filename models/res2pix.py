@@ -133,14 +133,14 @@ class Res2pix(object):
         if self._config.show_jpeg:
             print("Evaluation jpeg performance..")
             for bpp, psnr, mssim in self._evaluate_jpeg(sess, validation_set):
-                if bpp > 1.0:
+                if bpp > 0.5:
                     continue
                 psnr_summary = tf.Summary()
                 mssim_summary = tf.Summary()
                 psnr_summary.value.add(tag='jpeg_psnr', simple_value=psnr)
                 mssim_summary.value.add(tag='jpeg_mssim', simple_value=mssim)
-                writer.add_summary(psnr_summary, global_step=int(bpp*1000))
-                writer.add_summary(mssim_summary, global_step=int(bpp*1000))
+                writer.add_summary(psnr_summary, global_step=int(bpp*10000))
+                writer.add_summary(mssim_summary, global_step=int(bpp*10000))
             writer.flush()
               
         # training  
@@ -169,7 +169,7 @@ class Res2pix(object):
                 print("Epoch: [%2d]\tTrain Step: [%2d]\tBatch: [%2d]\tTime: %4.4f" % (epoch + 1, train_step, batch_num + 1,  time.time() - start_time))
                 
                 # evaluation
-                if train_step % 10 == 0:
+                if train_step % 100 == 0:
                     
                     # show images
                     for batch in validation_set.batch_iter(stop_after_epoch=True):
