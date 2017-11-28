@@ -210,11 +210,12 @@ class Res2pix(object):
                     print(str(jpeg.shape))
                     print(str(jpeg.dtype))
                     print(str(np.max(jpeg)))
+                    print(str(np.max(originals[i])))
                     file_size_bits = os.path.getsize("out.jpg")*8
                     
                     # measure performance
-                    psnrs.append(compare_psnr(originals[i], jpeg, data_range=2))
-                    mssims.append(compare_ssim(originals[i], jpeg, data_range=2))
+                    psnrs.append(compare_psnr(np.squeeze(originals[i]), jpeg, data_range=2))
+                    mssims.append(compare_ssim(np.squeeze(originals[i]), jpeg, data_range=2))
                     bpps.append(float(file_size_bits) / original_size_pixel)
                     os.remove("out.jpg")
                     
