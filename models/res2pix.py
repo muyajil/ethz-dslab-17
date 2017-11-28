@@ -215,7 +215,7 @@ class Res2pix(object):
                     
                     # measure performance
                     psnrs.append(compare_psnr(np.squeeze(originals[i]), jpeg, data_range=2))
-                    mssims.append(compare_ssim(np.squeeze(originals[i]), jpeg, data_range=2))
+                    mssims.append(compare_ssim(np.squeeze(originals[i]), jpeg, data_range=2, win_size=9))
                     bpps.append(float(file_size_bits) / original_size_pixel)
                     os.remove("out.jpg")
                     
@@ -253,7 +253,7 @@ class Res2pix(object):
             mssims = []
             for i in range(self._config.batch_size):
                 psnrs.append(compare_psnr(np.squeeze(originals[i]), np.squeeze(reconstructions[i]), data_range=2))
-                mssims.append(compare_ssim(np.squeeze(originals[i]), np.squeeze(reconstructions[i]), data_range=2))
+                mssims.append(compare_ssim(np.squeeze(originals[i]), np.squeeze(reconstructions[i]), data_range=2, win_size=9))
             avg_psnr = sum(psnrs)/len(psnrs)
             avg_psnrs.append(avg_psnr)
             avg_mssim = sum(mssims)/len(mssims)
