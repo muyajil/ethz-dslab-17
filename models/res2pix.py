@@ -310,7 +310,7 @@ class Res2pix(object):
                 print("Stage: Shape of e5 = " + str(e5.get_shape()))
                 print("Stage: Shape of e6 = " + str(e6.get_shape()))
                 print("Stage: Shape of e7 = " + str(e7.get_shape()))
-                print("Stage: Shape of binary representation = " + str(b.get_shape()))
+                print("Stage: Shape of binary representation = " + str(self._ops.binary_representations[-1].get_shape()))
                 print("Stage: Shape of d1 = " + str(d1.get_shape()))
                 print("Stage: Shape of d2 = " + str(d2.get_shape()))
                 print("Stage: Shape of d3 = " + str(d3.get_shape()))
