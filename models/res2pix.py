@@ -205,7 +205,8 @@ class Res2pix(object):
                     pil_original.save("out.jpg", "JPEG", quality=quality, optimize=True, progressive=True)   
                     pil_jpeg = Image.open("out.jpg")
                     jpeg = np.array(pil_jpeg)
-                    print(str(np.max(jpeg)))
+                    print(str(jpeg.shape))
+                    print(str(jpeg.dtype))
                     file_size_bits = os.path.getsize("out.jpg")*8
                     
                     # measure performance
