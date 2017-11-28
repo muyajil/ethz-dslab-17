@@ -201,15 +201,15 @@ class Res2pix(object):
                 for i in range(self._config.batch_size):
                     
                     # get jpeg reconstruction
-                    pil_original = Image.fromarray(original[i]) # set mode to F maybe
+                    pil_original = Image.fromarray(originals[i]) # set mode to F maybe
                     pil_original.save("out.jpg", "JPEG", quality=quality, optimize=True, progressive=True)   
                     pil_jpeg = Image.open("out.jpg")
                     jpeg = np.array(pil_jpeg)
                     file_size_bits = os.path.getsize("out.jpg")*8
                     
                     # measure performance
-                    psnrs.append(compare_psnr(original[i], jpeg, data_range=2))
-                    mssims.append(compare_ssim(original[i], jpeg, data_range=2))
+                    psnrs.append(compare_psnr(originals[i], jpeg, data_range=2))
+                    mssims.append(compare_ssim(originals[i], jpeg, data_range=2))
                     bpps.append(float(file_size_bits) / original_size_pixel)
                     os.remove("out.jpg")
                     
@@ -241,8 +241,8 @@ class Res2pix(object):
             psnrs = []
             mssims = []
             for i in range(self._config.batch_size):
-                psnrs.append(compare_psnr(original[i], reconstruction[i], data_range=2))
-                mssims.append(compare_ssim(original[i], reconstruction[i], data_range=2))
+                psnrs.append(compare_psnr(originals[i], reconstruction[i], data_range=2))
+                mssims.append(compare_ssim(originals[i], reconstruction[i], data_range=2))
             avg_psnr = sum(psnrs)/len(psnrs)
             avg_psnrs.append(avg_psnr)
             avg_mssim = sum(mssims)/len(mssims)
