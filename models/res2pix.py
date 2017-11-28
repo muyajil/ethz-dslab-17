@@ -201,12 +201,15 @@ class Res2pix(object):
                 for i in range(self._config.batch_size):
                     
                     # get jpeg reconstruction
-                    pil_original = Image.fromarray(np.reshape(originals[i], (originals[i].shape[0], originals[i].shape[1]) )).convert('RGB') # we may loose precision here due to RGB conversion
+                    
+                    pil_original = Image.fromarray(np.squeeze(((originals[i]+1)/2)*255).astype('uint8'), 'L')  # we may loose precision here
                     pil_original.save("out.jpg", "JPEG", quality=quality, optimize=True, progressive=True)   
                     pil_jpeg = Image.open("out.jpg")
-                    jpeg = np.array(pil_jpeg)
+                    jpeg = np.array(pil_jpeg).astype(originals[i].dtype)
+                    jpeg = ((jpeg / 255) * 2) -1
                     print(str(jpeg.shape))
                     print(str(jpeg.dtype))
+                    print(str(np.max(jpeg)))
                     file_size_bits = os.path.getsize("out.jpg")*8
                     
                     # measure performance
