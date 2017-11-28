@@ -132,7 +132,7 @@ class Res2pix(object):
         # evaluate jpeg performance
         if self._config.show_jpeg:
             print("Evaluation jpeg performance..")
-            for bpp, psnr, mssim in self._evaluate_jpeg(self, sess, validation_set):
+            for bpp, psnr, mssim in self._evaluate_jpeg(sess, validation_set):
                 psnr_summary = tf.Summary()
                 mssim_summary = tf.Summary()
                 psnr_summary.value.add(tag='jpeg_psnr', simple_value=psnr)
