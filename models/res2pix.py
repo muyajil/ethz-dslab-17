@@ -206,11 +206,7 @@ class Res2pix(object):
                     pil_original.save("out.jpg", "JPEG", quality=quality, optimize=True, progressive=True)   
                     pil_jpeg = Image.open("out.jpg")
                     jpeg = np.array(pil_jpeg).astype(originals[i].dtype)
-                    jpeg = ((jpeg / 255) * 2) -1
-                    print(str(jpeg.shape))
-                    print(str(jpeg.dtype))
-                    print(str(np.max(jpeg)))
-                    print(str(np.max(originals[i])))
+                    jpeg = ((jpeg / 255) * 2) - 1
                     file_size_bits = os.path.getsize("out.jpg")*8
                     
                     # measure performance
@@ -222,7 +218,7 @@ class Res2pix(object):
                 avg_psnr = sum(psnrs)/len(psnrs)
                 avg_psnrs.append(avg_psnr)
                 avg_mssim = sum(mssims)/len(mssims)
-                avg_mssims.append(avg_mssims)
+                avg_mssims.append(avg_mssim)
                 avg_bpp = sum(bpps)/len(bpps)
                 avg_bpps.append(avg_bpp)
             psnr = sum(avg_psnrs)/len(avg_psnrs)
