@@ -137,8 +137,9 @@ class Res2pix(object):
                 mssim_summary = tf.Summary()
                 psnr_summary.value.add(tag='jpeg_psnr', simple_value=psnr)
                 mssim_summary.value.add(tag='jpeg_mssim', simple_value=mssim)
-                writer.add_summary(psnr_summary, global_step=bpp)
-                writer.add_summary(mssim_summary, global_step=bpp)
+                writer.add_summary(psnr_summary, global_step=int(bpp*1000))
+                writer.add_summary(mssim_summary, global_step=int(bpp*1000))
+            writer.flush()
               
         # training  
         print("Starting with training..")
