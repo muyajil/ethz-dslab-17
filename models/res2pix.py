@@ -133,6 +133,8 @@ class Res2pix(object):
         if self._config.show_jpeg:
             print("Evaluation jpeg performance..")
             for bpp, psnr, mssim in self._evaluate_jpeg(sess, validation_set):
+                if bpp > 1.0:
+                    continue
                 psnr_summary = tf.Summary()
                 mssim_summary = tf.Summary()
                 psnr_summary.value.add(tag='jpeg_psnr', simple_value=psnr)
@@ -187,7 +189,7 @@ class Res2pix(object):
         
     def _evaluate_jpeg(self, sess, validation_set):
         qualities = []
-        for quality in range(0, 101, 10)[1:]:
+        for quality in range(0, 101, 5)[1:]:
             print("measuring performance for quality = " + str(quality))
             avg_psnrs = []
             avg_mssims = []
