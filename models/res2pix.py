@@ -41,7 +41,7 @@ class Config(object):
                  batch_size,
                  input_dimensions,
                  log_dir,
-                 gen_lambda=100,
+                 gen_lambda=1,
                  adam_beta1=0.5,
                  learning_rate=0.0002,
                  pretrain_epochs=1,
@@ -63,6 +63,7 @@ class Ops(object):
     
     # architectural ops
     in_img = None
+    binary_representations = []
 
     # losses and metrics
     dis_loss_real = None
@@ -142,6 +143,8 @@ class Res2pix(object):
                 print("Epoch: [%2d]\tTrain Step: [%2d]\tBatch: [%2d]\tTime: %4.4f" % (epoch + 1, train_step, batch_num + 1,  time.time() - start_time))
                 
                 if train_step % 10 == 0:
+                    
+                    # validation
                     for batch in validation_set.batch_iter(stop_after_epoch=True):
                         summary_str = sess.run(self._ops.val_summary, feed_dict={self._ops.in_img: batch})
                         writer.add_summary(summary_str, global_step=train_step)
@@ -192,8 +195,8 @@ class Res2pix(object):
         self._ops.gen_loss_adv_summary = tf.summary.scalar("gen_loss_adv", self._ops.gen_loss_adv)
         self._ops.gen_loss_reconstr_summary = tf.summary.scalar("gen_loss_reconstr", self._ops.gen_loss_reconstr)
         self._ops.gen_loss_summary = tf.summary.scalar("gen_loss", self._ops.gen_loss)
-        self._ops.val_psnr_summary = tf.summary.scalar("val_psnr", self._ops.psnr)
-        self._ops.val_in_out_img_summary = tf.summary.image("val_in_out_img", tf.concat([self._ops.in_img, gen_out], 1))
+        
+
         self._ops.dis_summary = tf.summary.merge([self._ops.dis_loss_real_summary,
                                                   self._ops.dis_out_real_histo,
                                                   self._ops.dis_loss_summary])
@@ -203,16 +206,30 @@ class Res2pix(object):
                                                   self._ops.gen_loss_reconstr_summary,
                                                   self._ops.gen_loss_summary])
         self._ops.gen_reconstr_summary = tf.summary.merge([self._ops.gen_loss_reconstr_summary])
+        
+        self._ops.val_psnr_summary = tf.summary.scalar("val_psnr", self._ops.psnr)
+        self._ops.val_bitcode_histo = tf.summary.histogram("val_bitcode_histogram", self._ops.binary_representations)
+        self._ops.val_in_out_img_summary = tf.summary.image("val_in_out_img", tf.concat([self._ops.in_img, gen_out], 1))
         self._ops.val_summary = tf.summary.merge([self._ops.val_in_out_img_summary,
-                                                  self._ops.val_psnr_summary])
+                                                  self._ops.val_psnr_summary,
+                                                  self._ops.val_bitcode_histo])
 
         # trainable variables and optimizers
         train_vars = tf.trainable_variables()
         dis_vars = [var for var in train_vars if 'd_' in var.name]
         gen_vars = [var for var in train_vars if 'g_' in var.name]
-        self._ops.dis_optimizer = tf.train.AdamOptimizer(self._config.learning_rate, beta1=self._config.adam_beta1).minimize(self._ops.dis_loss, var_list=dis_vars)
-        self._ops.gen_optimizer = tf.train.AdamOptimizer(self._config.learning_rate, beta1=self._config.adam_beta1).minimize(self._ops.gen_loss, var_list=gen_vars)
-        self._ops.gen_reconstr_optimizer = tf.train.AdamOptimizer(self._config.learning_rate, beta1=self._config.adam_beta1).minimize(self._ops.gen_loss_reconstr, var_list=gen_vars)
+
+        dis_opti = tf.train.AdamOptimizer(self._config.learning_rate, beta1=self._config.adam_beta1)
+        dis_grads_and_vars = dis_opti.compute_gradients((self._ops.dis_loss, var_list=dis_vars)
+        self._ops.dis_optimizer = dis_opti.apply_gradients(dis_grads_and_vars)
+        
+        gen_opti = tf.train.AdamOptimizer(self._config.learning_rate, beta1=self._config.adam_beta1)
+        gen_grads_and_vars = gen_opti.compute_gradients(self._ops.gen_loss, var_list=gen_vars)
+        self._ops.gen_optimizer = gen_opti.apply_gradients(gen_grads_and_vars)
+        
+        gen_reconstr_opti = tf.train.AdamOptimizer(self._config.learning_rate, beta1=self._config.adam_beta1)
+        gen_reconstr_grads_and_vars = gen_reconstr_opti.compute_gradients(self._ops.gen_loss_reconstr, var_list=gen_vars)
+        self._ops.gen_reconstr_optimizer = gen_reconstr_opti.apply_gradients(gen_reconstr_grads_and_vars)
         
         # initialization
         self._ops.init_op = tf.global_variables_initializer()
@@ -271,10 +288,10 @@ class Res2pix(object):
             e7 = tf.nn.tanh(conv2d(e6, 8, kernel_height=1, kernel_width=1, stride_height=1, stride_width=1, stddev=0.02, name='g_e7_conv'))
             
             # binarization
-            b = binarization(e7)
+            self._ops.binary_representations.append(binarization(e7))
     
             # decoder
-            d1 = conv2d(b, 256, kernel_height=3, kernel_width=3, stride_height=1, stride_width=1, stddev=0.02, name='g_d1_conv')
+            d1 = conv2d(self._ops.binary_representations[-1], 256, kernel_height=3, kernel_width=3, stride_height=1, stride_width=1, stddev=0.02, name='g_d1_conv')
             d2 = tf.nn.relu(batch_norm(conv2d(d1, 256, kernel_height=3, kernel_width=3, stride_height=1, stride_width=1, stddev=0.02, name='g_d2_conv'), name='g_bn_d2'))
             d3 = deconv2d(d2, [self._config.batch_size, c_height*2, c_width*2, 256], kernel_height=2, kernel_width=2, stride_height=2, stride_width=2, stddev=0.02, name="g_d3_deconv")
             d4 = tf.nn.relu(batch_norm(conv2d(d3, 128, kernel_height=3, kernel_width=3, stride_height=1, stride_width=1, stddev=0.02, name='g_d4_conv'), name='g_bn_d4'))

@@ -58,5 +58,11 @@ if __name__ == "__main__":
     t = threading.Thread(target=run_tensorboard, args=([args.log_dir, args.pythonpath]))
     t.start()
     
-    model = Res2pix(config=Config(args.batch_size, input_dimensions, args.log_dir, debug=True))
+    model = Res2pix(config=Config(args.batch_size,
+                                    input_dimensions,
+                                    args.log_dir,
+                                    pretrain_epochs=30,
+                                    debug=True,
+                                    gen_lambda=1,
+                                    learning_rate=1.0))
     run_model(args.epochs, args.split_ratio)
