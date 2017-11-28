@@ -6,6 +6,9 @@ import numpy as np
 
 from models.tf_utils import *
 
+from skimage.measure import compare_psnr, compare_ssim
+from PIL import Image
+
 
 
 '''
@@ -21,6 +24,7 @@ class Config(object):
     """
     
     debug = None
+    show_jpeg = None
 
     # parameters for loging
     log_dir = None
@@ -46,7 +50,8 @@ class Config(object):
                  learning_rate=0.0002,
                  pretrain_epochs=1,
                  stages=1,
-                 debug=False):
+                 debug=False,
+                 show_jpeg=True):
                      
         self.batch_size = batch_size
         self.input_dimensions = input_dimensions
@@ -57,6 +62,7 @@ class Config(object):
         self.pretrain_epochs = pretrain_epochs
         self.stages = stages
         self.debug = debug
+        self.show_jpeg = show_jpeg
 
 
 class Ops(object):
@@ -122,6 +128,22 @@ class Res2pix(object):
         writer = tf.summary.FileWriter(self._config.log_dir, sess.graph)
         train_step = 1
         start_time = time.time()
+        
+        # evaluate jpeg performance
+        if self._config.show_jpeg:
+            print("Evaluation jpeg performance..")
+            for bpp, psnr, mssim in self._evaluate_jpeg(self, sess, validation_set):
+                psnr_summary = tf.Summary()
+                mssim_summary = tf.Summary()
+                psnr_summary.value.add(tag='jpeg_psnr', simple_value=psnr)
+                mssim_summary.value.add(tag='jpeg_mssim', simple_value=mssim)
+                writer.add_summary(psnr_summary, global_step=bpp)
+                writer.add_summary(mssim_summary, global_step=bpp)
+              
+        # training  
+        print("Starting with training..")
+        bpp = float(self._code_bits) / (self._config.input_dimensions.height * self._config.input_dimensions.width)
+        print("Bits per Pixel = " + str(bpp))
         for epoch in xrange(epochs):
             for batch_num, batch in enumerate(training_set.batch_iter(stop_after_epoch=True)):
                 
@@ -143,21 +165,96 @@ class Res2pix(object):
                     
                 print("Epoch: [%2d]\tTrain Step: [%2d]\tBatch: [%2d]\tTime: %4.4f" % (epoch + 1, train_step, batch_num + 1,  time.time() - start_time))
                 
+                # evaluation
                 if train_step % 10 == 0:
                     
-                    # validation
+                    # show images
                     for batch in validation_set.batch_iter(stop_after_epoch=True):
-                        summary_str = sess.run(self._ops.val_summary, feed_dict={self._ops.in_img: batch})
+                        summary_str = sess.run(self._ops.val_in_out_img_summary, feed_dict={self._ops.in_img: batch})
                         writer.add_summary(summary_str, global_step=train_step)
-                        break # we only do one batch for convenience
+                        break # we only do one batch
+                    
+                    # psnr and mssim
+                    psnr_summary, mssim_summary = self._evaluation(sess, validation_set)
+                    writer.add_summary(psnr_summary, global_step=train_step)
+                    writer.add_summary(mssim_summary, global_step=train_step)
 
                 train_step += 1
-                
-            # measuring compression metrics
-            bpp = float(self._code_bits) / (self._config.input_dimensions.height * self._config.input_dimensions.width)
-            print("Bits per Pixel = " + str(bpp))
-                
+      
         writer.close()
+        
+        
+    def _evaluate_jpeg(self, sess, validation_set):
+        qualities = []
+        for quality in range(100):
+            avg_psnrs = []
+            avg_mssims = []
+            avg_bpps = []
+            for batch in validation_set.batch_iter(stop_after_epoch=True):
+                originals = sess.run([self._ops.in_img], feed_dict={self._ops.in_img: batch})
+                original_size_pixel = originals.shape[1] * originals.shape[2]
+                
+                psnrs = []
+                mssims = []
+                bpps = []
+                for i in range(self._config.batch_size):
+                    
+                    # get jpeg reconstruction
+                    pil_original = PIL.Image.fromarray(original[i]) # set mode to F maybe
+                    pil_original.save("out.jpg", "JPEG", quality=quality, optimize=True, progressive=True)   
+                    pil_jpeg = Image.open("out.jpg")
+                    jpeg = np.array(pil_jpeg)
+                    file_size_bits = os.path.getsize("out.jpg")*8
+                    
+                    # measure performance
+                    psnrs.append(compare_psnr(original[i], jpeg, data_range=2))
+                    mssims.append(compare_ssim(original[i], jpeg, data_range=2))
+                    bpps.append(float(file_size_bits) / original_size_pixel)
+                    os.remove("out.jpg")
+                    
+                avg_psnr = sum(psnrs)/len(psnrs)
+                avg_psnrs.append(avg_psnr)
+                avg_mssim = sum(mssims)/len(mssims)
+                avg_mssims.append(avg_mssims)
+                avg_bpp = sum(bpps)/len(bpps)
+                avg_bpps.append(avg_bpp)
+            psnr = sum(avg_psnrs)/len(avg_psnrs)
+            mssim = sum(avg_mssims)/len(avg_mssims)
+            bpp = sum(avg_bpps)/len(avg_bpps)
+            qualities.append(bpp, psnr, mssim)
+            
+        return sorted(qualities, key=lambda x: x[0])
+                    
+
+    def _evaluation(self, sess, validation_set):
+        
+        print("Evaluating...")
+        avg_psnrs = []
+        avg_mssims = []
+        for batch in validation_set.batch_iter(stop_after_epoch=True):
+            originals, reconstructions = sess.run([self._ops.in_img, self._ops.gen_out], feed_dict={self._ops.in_img: batch})
+            
+            if self._config.debug:
+                print("Shape of fetched images = " + str(originals.shape))
+            
+            psnrs = []
+            mssims = []
+            for i in range(self._config.batch_size):
+                psnrs.append(compare_psnr(original[i], reconstruction[i], data_range=2))
+                mssims.append(compare_ssim(original[i], reconstruction[i], data_range=2))
+            avg_psnr = sum(psnrs)/len(psnrs)
+            avg_psnrs.append(avg_psnr)
+            avg_mssim = sum(mssims)/len(mssims)
+            avg_mssims.append(avg_mssim)
+        psnr = sum(avg_psnrs)/len(avg_psnrs)
+        mssim = sum(avg_mssims)/len(avg_mssims)
+        
+        psnr_summary = tf.Summary()
+        mssim_summary = tf.Summary()
+        psnr_summary.value.add(tag='avg_val_psnr', simple_value=psnr)
+        mssim_summary.value.add(tag='avg_val_mssim', simple_value=mssim)
+
+        return psnr_summary, mssim_summary
 
 
     def _setup_model(self):
@@ -170,12 +267,12 @@ class Res2pix(object):
                                                             
         # architecture
         gen_res_preds, gen_residuals = self._generator(self._ops.in_img)
-        gen_out = 0
+        self._ops.gen_out = 0
         for res_pred in gen_res_preds:
-            gen_out += res_pred
+            self._ops.gen_out += res_pred
             
         dis_out_real, dis_logits_real = self._discriminator(self._ops.in_img, reuse=False)
-        dis_out_fake, dis_logits_fake = self._discriminator(gen_out, reuse=True)
+        dis_out_fake, dis_logits_fake = self._discriminator(self._ops.gen_out, reuse=True)
 
         # loss and metrics functions
         self._ops.dis_loss_real = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(logits=dis_logits_real, labels=tf.ones_like(dis_out_real)))
@@ -190,7 +287,7 @@ class Res2pix(object):
         self._ops.gen_loss_reconstr = tf.reduce_sum(tf.convert_to_tensor(stage_losses))
 
         self._ops.gen_loss = self._ops.gen_loss_adv + self._config.gen_lambda * self._ops.gen_loss_reconstr
-        self._ops.psnr = psnr(self._ops.in_img, gen_out)
+        self._ops.psnr = psnr(self._ops.in_img, self._ops.gen_out)
         
         # tensorboard
         self._ops.dis_loss_real_summary = tf.summary.scalar("dis_loss_real", self._ops.dis_loss_real)
@@ -212,7 +309,10 @@ class Res2pix(object):
         self._ops.gen_reconstr_summary = tf.summary.merge([self._ops.gen_loss_reconstr_summary])
         self._ops.val_psnr_summary = tf.summary.scalar("val_psnr", self._ops.psnr)
         self._ops.val_bitcode_histo = tf.summary.histogram("val_bitcode_histogram", self._ops.binary_representations)
-        self._ops.val_in_out_img_summary = tf.summary.image("val_in_out_img", tf.concat([self._ops.in_img, gen_out], 1))
+        
+        
+        
+        self._ops.val_in_out_img_summary = tf.summary.image("val_in_out_img", tf.concat([self._ops.in_img, self._ops.gen_out], 1))
         self._ops.val_summary = tf.summary.merge([self._ops.val_in_out_img_summary,
                                                   self._ops.val_psnr_summary,
                                                   self._ops.val_bitcode_histo])
@@ -243,7 +343,7 @@ class Res2pix(object):
             print("Number of residuals (including input image) = " + str(len(gen_residuals)))
             print("Shape of first residual prediction = " + str(gen_res_preds[0].get_shape()))
             print("Shape of first residual = " + str(gen_residuals[0].get_shape()))
-            print("Shape of generator output = " + str(gen_out.get_shape()))
+            print("Shape of generator output = " + str(self._ops.gen_out.get_shape()))
             print("Shape of discriminator (fake) output = " + str(dis_out_fake.get_shape()))
 
 
