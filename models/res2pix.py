@@ -266,7 +266,7 @@ class Res2pix(object):
             res = []
             res.append(image)
             for s in range(self._config.stages + 1)[1:]:
-                stage_preds.append(self._residual_encoder_stage(res[s-1]))
+                stage_preds.append(self._residual_encoder_stage(res[s-1], name="stage_" + str(s)))
                 res.append(res[s-1] - stage_preds[s-1])
             return stage_preds, res
             
