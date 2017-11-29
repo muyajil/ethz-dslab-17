@@ -277,18 +277,18 @@ class Res2pix(object):
                                                             self._config.input_dimensions.depth])
                                                             
         # architecture
-        # gen_preds = self._generator_res2pix(self._ops.in_img)
-        gen_res_preds, gen_residuals = self._generator_res2res(self._ops.in_img)
+        gen_preds = self._generator_res2pix(self._ops.in_img)
+        # gen_res_preds, gen_residuals = self._generator_res2res(self._ops.in_img)
         
         # res2pix output
         # --------------
-        # self._ops.gen_out = gen_preds[-1]
+        self._ops.gen_out = gen_preds[-1]
         
         # res2res output
         # --------------
-        self._ops.gen_out = 0
-        for res_pred in gen_res_preds:
-            self._ops.gen_out += res_pred
+        # self._ops.gen_out = 0
+        # for res_pred in gen_res_preds:
+        #     self._ops.gen_out += res_pred
             
         dis_out_real, dis_logits_real = self._discriminator(self._ops.in_img, reuse=False)
         dis_out_fake, dis_logits_fake = self._discriminator(self._ops.gen_out, reuse=True)
@@ -301,17 +301,17 @@ class Res2pix(object):
         
         # res2pix loss
         # --------------
-        # stage_losses = []      
-        # for pred in gen_preds:
-        #     stage_losses.append(tf.reduce_mean(tf.reduce_sum(tf.square(self._ops.in_img - pred), [1, 2, 3])))
-        # self._ops.gen_loss_reconstr = tf.reduce_sum(tf.convert_to_tensor(stage_losses))
+        stage_losses = []      
+        for pred in gen_preds:
+            stage_losses.append(tf.reduce_mean(tf.reduce_sum(tf.square(self._ops.in_img - pred), [1, 2, 3])))
+        self._ops.gen_loss_reconstr = tf.reduce_sum(tf.convert_to_tensor(stage_losses))
 
         # res2res loss
         # --------------
-        stage_losses = []
-        for res in gen_residuals[1:]:
-            stage_losses.append(tf.reduce_mean(tf.reduce_sum(tf.square(res), [1, 2, 3])))
-        self._ops.gen_loss_reconstr = tf.reduce_sum(tf.convert_to_tensor(stage_losses))
+        # stage_losses = []
+        # for res in gen_residuals[1:]:
+        #     stage_losses.append(tf.reduce_mean(tf.reduce_sum(tf.square(res), [1, 2, 3])))
+        # self._ops.gen_loss_reconstr = tf.reduce_sum(tf.convert_to_tensor(stage_losses))
 
         self._ops.gen_loss = self._ops.gen_loss_adv + self._config.gen_lambda * self._ops.gen_loss_reconstr
         self._ops.psnr = psnr(self._ops.in_img, self._ops.gen_out)
