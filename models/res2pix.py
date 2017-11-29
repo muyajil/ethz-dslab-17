@@ -367,7 +367,6 @@ class Res2pix(object):
         # debug
         if self._config.debug:
             print("Shape of input placeholder = " + str(self._ops.in_img.get_shape()))
-            print("Shape of first residual prediction = " + str(gen_res_preds[0].get_shape()))
             print("Shape of first residual = " + str(gen_residuals[0].get_shape()))
             print("Shape of generator output = " + str(self._ops.gen_out.get_shape()))
             print("Shape of discriminator (fake) output = " + str(dis_out_fake.get_shape()))
