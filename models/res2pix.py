@@ -394,6 +394,7 @@ class Res2pix(object):
             stage_preds = []
             current_prediction = 0
             current_conv_links = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+            
             current_residual = image
             for s in range(self._config.stages + 1)[1:]:
                 current_prediction, current_conv_links = self._R2I_full_stage(current_residual, current_conv_links, name="stage_" + str(s))
@@ -417,26 +418,38 @@ class Res2pix(object):
             
             # encoder
             e1 = tf.nn.relu(batch_norm(conv2d(res_in, 64, kernel_height=3, kernel_width=3, stride_height=1, stride_width=1, stddev=0.02, name='g_e1_conv'), name='g_bn_e1'))
+            if prev_convs[0] == 0:
+                prev_convs[0] = tf.zeros_like(e1)
             e1_prev = tf.nn.relu(batch_norm(conv2d(prev_convs[0], 64, kernel_height=3, kernel_width=3, stride_height=1, stride_width=1, stddev=0.02, name='g_e1_prev_conv'), name='g_bn_e1_prev'))
             e1_comb = tf.nn.tanh(e1 + e1_prev)
             
             e2 = tf.nn.relu(batch_norm(conv2d(e1_comb, 128, kernel_height=3, kernel_width=3, stride_height=2, stride_width=2, stddev=0.02, name='g_e2_conv'), name='g_bn_e2'))
+            if prev_convs[1] == 0:
+                prev_convs[1] = tf.zeros_like(e2)
             e2_prev = tf.nn.relu(batch_norm(conv2d(prev_convs[1], 128, kernel_height=3, kernel_width=3, stride_height=1, stride_width=1, stddev=0.02, name='g_e2_prev_conv'), name='g_bn_e2_prev'))
             e2_comb = tf.nn.tanh(e2 + e2_prev)
 
             e3 = tf.nn.relu(batch_norm(conv2d(e2_comb, 128, kernel_height=3, kernel_width=3, stride_height=1, stride_width=1, stddev=0.02, name='g_e3_conv'), name='g_bn_e3'))
+            if prev_convs[2] == 0:
+                prev_convs[2] = tf.zeros_like(e3)
             e3_prev = tf.nn.relu(batch_norm(conv2d(prev_convs[2], 128, kernel_height=3, kernel_width=3, stride_height=1, stride_width=1, stddev=0.02, name='g_e3_prev_conv'), name='g_bn_e3_prev'))
             e3_comb = tf.nn.tanh(e3 + e3_prev)         
             
             e4 = tf.nn.relu(batch_norm(conv2d(e3_comb, 256, kernel_height=3, kernel_width=3, stride_height=2, stride_width=2, stddev=0.02, name='g_e4_conv'), name='g_bn_e4'))
+            if prev_convs[3] == 0:
+                prev_convs[3] = tf.zeros_like(e4)
             e4_prev = tf.nn.relu(batch_norm(conv2d(prev_convs[3], 256, kernel_height=3, kernel_width=3, stride_height=1, stride_width=1, stddev=0.02, name='g_e4_prev_conv'), name='g_bn_e4_prev'))
             e4_comb = tf.nn.tanh(e4 + e4_prev)              
             
             e5 = tf.nn.relu(batch_norm(conv2d(e4_comb, 256, kernel_height=3, kernel_width=3, stride_height=1, stride_width=1, stddev=0.02, name='g_e5_conv'), name='g_bn_e5'))
+            if prev_convs[4] == 0:
+                prev_convs[4] = tf.zeros_like(e5)
             e5_prev = tf.nn.relu(batch_norm(conv2d(prev_convs[4], 256, kernel_height=3, kernel_width=3, stride_height=1, stride_width=1, stddev=0.02, name='g_e5_prev_conv'), name='g_bn_e5_prev'))
             e5_comb = tf.nn.tanh(e5 + e5_prev)   
             
             e6 = tf.nn.relu(batch_norm(conv2d(e5_comb, 256, kernel_height=3, kernel_width=3, stride_height=2, stride_width=2, stddev=0.02, name='g_e6_conv'), name='g_bn_e6'))
+            if prev_convs[5] == 0:
+                prev_convs[5] = tf.zeros_like(e6)
             e6_prev = tf.nn.relu(batch_norm(conv2d(prev_convs[5], 256, kernel_height=3, kernel_width=3, stride_height=1, stride_width=1, stddev=0.02, name='g_e6_prev_conv'), name='g_bn_e6_prev'))
             e6_comb = tf.nn.tanh(e6 + e6_prev) 
             
@@ -448,26 +461,38 @@ class Res2pix(object):
             # decoder
             d1 = conv2d(self._ops.binary_representations[-1], 256, kernel_height=3, kernel_width=3, stride_height=1, stride_width=1, stddev=0.02, name='g_d1_conv')
             d2 = tf.nn.relu(batch_norm(conv2d(d1, 256, kernel_height=3, kernel_width=3, stride_height=1, stride_width=1, stddev=0.02, name='g_d2_conv'), name='g_bn_d2'))
+            if prev_convs[6] == 0:
+                prev_convs[6] = tf.zeros_like(d2)
             d2_prev = tf.nn.relu(batch_norm(conv2d(prev_convs[6], 256, kernel_height=3, kernel_width=3, stride_height=1, stride_width=1, stddev=0.02, name='g_d2_conv_prev'), name='g_bn_d2_prev'))
             d2_comb = tf.nn.tanh(d2 + d2_prev) 
             
             d3 = deconv2d(d2_comb, [self._config.batch_size, c_height*2, c_width*2, 256], kernel_height=2, kernel_width=2, stride_height=2, stride_width=2, stddev=0.02, name="g_d3_deconv")
+            if prev_convs[7] == 0:
+                prev_convs[7] = tf.zeros_like(d3)
             d3_prev = tf.nn.relu(batch_norm(conv2d(prev_convs[7], 256, kernel_height=3, kernel_width=3, stride_height=1, stride_width=1, stddev=0.02, name='g_d3_conv_prev'), name='g_bn_d3_prev'))
             d3_comb = tf.nn.tanh(d3 + d3_prev) 
             
             d4 = tf.nn.relu(batch_norm(conv2d(d3_comb, 128, kernel_height=3, kernel_width=3, stride_height=1, stride_width=1, stddev=0.02, name='g_d4_conv'), name='g_bn_d4'))
+            if prev_convs[8] == 0:
+                prev_convs[8] = tf.zeros_like(d4)
             d4_prev = tf.nn.relu(batch_norm(conv2d(prev_convs[8], 128, kernel_height=3, kernel_width=3, stride_height=1, stride_width=1, stddev=0.02, name='g_d4_conv_prev'), name='g_bn_d4_prev'))
             d4_comb = tf.nn.tanh(d4 + d4_prev) 
             
             d5 = deconv2d(d4_comb, [self._config.batch_size, c_height*4, c_width*4, 128], kernel_height=2, kernel_width=2, stride_height=2, stride_width=2, stddev=0.02, name="g_d5_deconv")
+            if prev_convs[9] == 0:
+                prev_convs[9] = tf.zeros_like(d5)
             d5_prev = tf.nn.relu(batch_norm(conv2d(prev_convs[9], 128, kernel_height=3, kernel_width=3, stride_height=1, stride_width=1, stddev=0.02, name='g_d5_conv_prev'), name='g_bn_d5_prev'))
             d5_comb = tf.nn.tanh(d5 + d5_prev) 
             
             d6 = tf.nn.relu(batch_norm(conv2d(d5_comb, 64, kernel_height=3, kernel_width=3, stride_height=1, stride_width=1, stddev=0.02, name='g_d6_conv'), name='g_bn_d6'))
+            if prev_convs[10] == 0:
+                prev_convs[10] = tf.zeros_like(d6)
             d6_prev = tf.nn.relu(batch_norm(conv2d(prev_convs[10], 64, kernel_height=3, kernel_width=3, stride_height=1, stride_width=1, stddev=0.02, name='g_d6_conv_prev'), name='g_bn_d6_prev'))
             d6_comb = tf.nn.tanh(d6 + d6_prev)             
 
             d7 = deconv2d(d6_comb, [self._config.batch_size, c_height*8, c_width*8, 64], kernel_height=2, kernel_width=2, stride_height=2, stride_width=2, stddev=0.02, name="g_d7_deconv")
+            if prev_convs[11] == 0:
+                prev_convs[11] = tf.zeros_like(d7)
             d7_prev = tf.nn.relu(batch_norm(conv2d(prev_convs[11], 64, kernel_height=3, kernel_width=3, stride_height=1, stride_width=1, stddev=0.02, name='g_d7_conv_prev'), name='g_bn_d7_prev'))
             d7_comb = tf.nn.tanh(d7 + d7_prev)  
             
