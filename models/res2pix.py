@@ -277,17 +277,18 @@ class Res2pix(object):
                                                             self._config.input_dimensions.depth])
                                                             
         # architecture
-        gen_preds = self._generator_res2pix(self._ops.in_img)
+        # gen_preds = self._generator_res2pix(self._ops.in_img)
+        gen_res_preds, gen_residuals = self._generator_res2res(self._ops.in_img)
         
         # res2pix output
         # --------------
-        self._ops.gen_out = gen_preds[-1]
+        # self._ops.gen_out = gen_preds[-1]
         
         # res2res output
         # --------------
-        # self._ops.gen_out = 0
-        # for res_pred in gen_res_preds:
-        #     self._ops.gen_out += res_pred
+        self._ops.gen_out = 0
+        for res_pred in gen_res_preds:
+            self._ops.gen_out += res_pred
             
         dis_out_real, dis_logits_real = self._discriminator(self._ops.in_img, reuse=False)
         dis_out_fake, dis_logits_fake = self._discriminator(self._ops.gen_out, reuse=True)
@@ -300,17 +301,17 @@ class Res2pix(object):
         
         # res2pix loss
         # --------------
-        stage_losses = []      
-        for pred in gen_preds:
-            stage_losses.append(tf.reduce_mean(tf.reduce_sum(tf.square(self._ops.in_img - pred), [1, 2, 3])))
-        self._ops.gen_loss_reconstr = tf.reduce_sum(tf.convert_to_tensor(stage_losses))
+        # stage_losses = []      
+        # for pred in gen_preds:
+        #     stage_losses.append(tf.reduce_mean(tf.reduce_sum(tf.square(self._ops.in_img - pred), [1, 2, 3])))
+        # self._ops.gen_loss_reconstr = tf.reduce_sum(tf.convert_to_tensor(stage_losses))
 
         # res2res loss
         # --------------
-        # stage_losses = []
-        # for res in gen_residuals[1:]:
-        #     stage_losses.append(tf.reduce_mean(tf.reduce_sum(tf.square(res), [1, 2, 3])))
-        # self._ops.gen_loss_reconstr = tf.reduce_sum(tf.convert_to_tensor(stage_losses))
+        stage_losses = []
+        for res in gen_residuals[1:]:
+            stage_losses.append(tf.reduce_mean(tf.reduce_sum(tf.square(res), [1, 2, 3])))
+        self._ops.gen_loss_reconstr = tf.reduce_sum(tf.convert_to_tensor(stage_losses))
 
         self._ops.gen_loss = self._ops.gen_loss_adv + self._config.gen_lambda * self._ops.gen_loss_reconstr
         self._ops.psnr = psnr(self._ops.in_img, self._ops.gen_out)
@@ -416,12 +417,12 @@ class Res2pix(object):
             c_width = int(width / 8)
             
             # encoder
-            e1 = lrelu(batch_norm(conv2d(res_in, 64, kernel_height=3, kernel_width=3, stride_height=1, stride_width=1, stddev=0.02, name='g_e1_conv'), name='g_bn_e1'))
-            e2 = lrelu(batch_norm(conv2d(e1, 128, kernel_height=3, kernel_width=3, stride_height=2, stride_width=2, stddev=0.02, name='g_e2_conv'), name='g_bn_e2'))
-            e3 = lrelu(batch_norm(conv2d(e2, 128, kernel_height=3, kernel_width=3, stride_height=1, stride_width=1, stddev=0.02, name='g_e3_conv'), name='g_bn_e3'))
-            e4 = lrelu(batch_norm(conv2d(e3, 256, kernel_height=3, kernel_width=3, stride_height=2, stride_width=2, stddev=0.02, name='g_e4_conv'), name='g_bn_e4'))
-            e5 = lrelu(batch_norm(conv2d(e4, 256, kernel_height=3, kernel_width=3, stride_height=1, stride_width=1, stddev=0.02, name='g_e5_conv'), name='g_bn_e5'))
-            e6 = lrelu(batch_norm(conv2d(e5, 256, kernel_height=3, kernel_width=3, stride_height=2, stride_width=2, stddev=0.02, name='g_e6_conv'), name='g_bn_e6'))
+            e1 = tf.nn.relu(batch_norm(conv2d(res_in, 64, kernel_height=3, kernel_width=3, stride_height=1, stride_width=1, stddev=0.02, name='g_e1_conv'), name='g_bn_e1'))
+            e2 = tf.nn.relu(batch_norm(conv2d(e1, 128, kernel_height=3, kernel_width=3, stride_height=2, stride_width=2, stddev=0.02, name='g_e2_conv'), name='g_bn_e2'))
+            e3 = tf.nn.relu(batch_norm(conv2d(e2, 128, kernel_height=3, kernel_width=3, stride_height=1, stride_width=1, stddev=0.02, name='g_e3_conv'), name='g_bn_e3'))
+            e4 = tf.nn.relu(batch_norm(conv2d(e3, 256, kernel_height=3, kernel_width=3, stride_height=2, stride_width=2, stddev=0.02, name='g_e4_conv'), name='g_bn_e4'))
+            e5 = tf.nn.relu(batch_norm(conv2d(e4, 256, kernel_height=3, kernel_width=3, stride_height=1, stride_width=1, stddev=0.02, name='g_e5_conv'), name='g_bn_e5'))
+            e6 = tf.nn.relu(batch_norm(conv2d(e5, 256, kernel_height=3, kernel_width=3, stride_height=2, stride_width=2, stddev=0.02, name='g_e6_conv'), name='g_bn_e6'))
             e7 = tf.nn.tanh(conv2d(e6, 8, kernel_height=1, kernel_width=1, stride_height=1, stride_width=1, stddev=0.02, name='g_e7_conv'))
             
             # binarization
@@ -460,8 +461,7 @@ class Res2pix(object):
     
             return pred
             
-'''
-                
+            
     def _generator_res2res(self, image):
         with tf.variable_scope("generator") as scope:
             
@@ -479,10 +479,9 @@ class Res2pix(object):
             self._code_bits = (bin_dim * self._config.stages)
                 
             return stage_preds, res
-'''  
+
             
-'''
-            
+    
     def _residual_encoder_stage(self, res_in, name="stage"):
         with tf.variable_scope(name):
 
@@ -533,7 +532,7 @@ class Res2pix(object):
                 print("Stage: Shape of d8 = " + str(d8.get_shape()))
     
             return d8
-'''         
+        
             
 '''
     def _generator_pix2pix(self, image):
