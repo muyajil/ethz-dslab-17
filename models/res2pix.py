@@ -277,7 +277,7 @@ class Res2pix(object):
                                                             self._config.input_dimensions.depth])
                                                             
         # architecture
-        gen_preds = self._generator_res2pix(self._ops.in_img)
+        gen_preds = self._generator_R2I_full(self._ops.in_img)
         # gen_res_preds, gen_residuals = self._generator_res2res(self._ops.in_img)
         
         # res2pix output
@@ -386,25 +386,10 @@ class Res2pix(object):
             return tf.nn.sigmoid(h4), h4
             
             
-    def _generator_res2pix(self, image):
-        with tf.variable_scope("generator") as scope:
-            stage_preds = []
-            current_prediction = 0
-            current_residual = image
-            for s in range(self._config.stages + 1)[1:]:
-                current_prediction = self._res2pix_stage(current_residual, current_prediction, name="stage_" + str(s))
-                current_residual = image - current_prediction
-                stage_preds.append(current_prediction)
-            
-             # compute bpp
-            bin_dim = 1
-            for dim in self._ops.binary_representations[0].get_shape().as_list()[1:]:
-                bin_dim *= dim
-            self._code_bits = (bin_dim * self._config.stages)
-                
-            return stage_preds
-            
-    def _generator_R2I_full_(self, image):
+
+        
+        
+    def _generator_R2I_full(self, image):
         with tf.variable_scope("generator") as scope:
             stage_preds = []
             current_prediction = 0
@@ -492,7 +477,26 @@ class Res2pix(object):
     
             return pred, convs
             
-    def _res2pix_stage(self, res_in, prev_pred, name="stage"):
+
+    def _generator_R2I_predconn(self, image):
+        with tf.variable_scope("generator") as scope:
+            stage_preds = []
+            current_prediction = 0
+            current_residual = image
+            for s in range(self._config.stages + 1)[1:]:
+                current_prediction = self._R2I_predconn_stage(current_residual, current_prediction, name="stage_" + str(s))
+                current_residual = image - current_prediction
+                stage_preds.append(current_prediction)
+            
+             # compute bpp
+            bin_dim = 1
+            for dim in self._ops.binary_representations[0].get_shape().as_list()[1:]:
+                bin_dim *= dim
+            self._code_bits = (bin_dim * self._config.stages)
+                
+            return stage_preds
+            
+    def _R2I_predconn_stage(self, res_in, prev_pred, name="stage"):
         with tf.variable_scope(name):
 
             batchsize, height, width, channels = res_in.get_shape().as_list()
@@ -545,14 +549,14 @@ class Res2pix(object):
             return pred
             
             
-    def _generator_res2res(self, image):
+    def _generator_R2R(self, image):
         with tf.variable_scope("generator") as scope:
             
             stage_preds = []
             res = []
             res.append(image)
             for s in range(self._config.stages + 1)[1:]:
-                stage_preds.append(self._residual_encoder_stage(res[s-1], name="stage_" + str(s)))
+                stage_preds.append(self._R2R_stage(res[s-1], name="stage_" + str(s)))
                 res.append(res[s-1] - stage_preds[s-1])
                 
             # compute bpp
@@ -565,7 +569,7 @@ class Res2pix(object):
 
             
     
-    def _residual_encoder_stage(self, res_in, name="stage"):
+    def _R2R_stage(self, res_in, name="stage"):
         with tf.variable_scope(name):
 
             batchsize, height, width, channels = res_in.get_shape().as_list()

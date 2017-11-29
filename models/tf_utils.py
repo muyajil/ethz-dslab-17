@@ -28,8 +28,8 @@ def conv2d(input_,
         in_channels = input_.get_shape()[-1]
         w = tf.get_variable('w',
                             [kernel_height, kernel_width, in_channels, out_channels],
-                            #initializer=tf.truncated_normal_initializer(stddev=stddev))
-                            initializer=tf.contrib.layers.variance_scaling_initializer())
+                            initializer=tf.truncated_normal_initializer(stddev=stddev))
+                            #initializer=tf.contrib.layers.variance_scaling_initializer())
         conv = tf.nn.conv2d(input_,
                             w,
                             strides=[1, stride_height, stride_width, 1],
@@ -52,8 +52,8 @@ def deconv2d(input_,
     with tf.variable_scope(name):
         w = tf.get_variable('w',
                             [kernel_height, kernel_width, output_shape[-1], input_.get_shape()[-1]],
-                            # initializer=tf.random_normal_initializer(stddev=stddev))
-                            initializer=tf.contrib.layers.variance_scaling_initializer())
+                            initializer=tf.random_normal_initializer(stddev=stddev))
+                            # initializer=tf.contrib.layers.variance_scaling_initializer())
         deconv = tf.nn.conv2d_transpose(input_,
                                         w,
                                         output_shape=output_shape,
