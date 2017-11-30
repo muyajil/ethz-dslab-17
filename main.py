@@ -63,8 +63,8 @@ if __name__ == "__main__":
                                     args.log_dir,
                                     pretrain_epochs=20,
                                     debug=True,
-                                    gen_lambda=1,
-                                    learning_rate=0.001,
-                                    stages=8,
+                                    gen_lambda=10,
+                                    learning_rate=0.0005,
+                                    stages=6,
                                     show_jpeg=False))
     run_model(args.epochs, args.split_ratio)
