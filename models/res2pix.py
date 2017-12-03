@@ -102,6 +102,7 @@ class Ops(object):
     gen_summary = None
     gen_reconstr_summary = None
     val_in_out_img_summary = None
+    val_bitplane_summary = None
     val_psnr_summary = None
     val_summary = None
 
@@ -174,14 +175,16 @@ class Res2pix(object):
                     
                     # show images
                     for batch in validation_set.batch_iter(stop_after_epoch=True):
-                        summary_str = sess.run(self._ops.val_in_out_img_summary, feed_dict={self._ops.in_img: batch})
-                        writer.add_summary(summary_str, global_step=train_step)
+                        summary_str1, summary_str2 = sess.run([self._ops.val_in_out_img_summary, self._ops.val_bitplane_summary], feed_dict={self._ops.in_img: batch})
+                        writer.add_summary(summary_str1, global_step=train_step)
+                        writer.add_summary(summary_str2, global_step=train_step)
                         break # we only do one batch
                     
                     # psnr and mssim
-                    psnr_summary, mssim_summary = self._evaluation(sess, validation_set)
-                    writer.add_summary(psnr_summary, global_step=train_step)
-                    writer.add_summary(mssim_summary, global_step=train_step)
+                    psnr_summaries, mssim_summaries = self._evaluation(sess, validation_set)
+                    for i in range(len(psnr_summaries)):
+                        writer.add_summary(psnr_summaries[i], global_step=train_step)
+                        writer.add_summary(mssim_summaries[i], global_step=train_step)
 
                 train_step += 1
       
@@ -241,34 +244,37 @@ class Res2pix(object):
     def _evaluation(self, sess, validation_set):
         
         print("Evaluating...")
-        avg_psnrs = []
-        avg_mssims = []
+        avg_psnrs_stages = [[]]*self._config.stages
+        avg_mssims_stages = [[]]*self._config.stages
         for batch in validation_set.batch_iter(stop_after_epoch=True):
-            originals, reconstructions = sess.run([self._ops.in_img, self._ops.gen_out], feed_dict={self._ops.in_img: batch})
+            
+            # get images from tf session  
+            originals, reconstructions = sess.run([self._ops.in_img, self._ops.gen_preds], feed_dict={self._ops.in_img: batch})
             
             if self._config.debug:
-                print("Shape of fetched images = " + str(originals.shape))
-            
-            psnrs = []
-            mssims = []
-            for i in range(self._config.batch_size):
-                
-                psnrs.append(compare_psnr(np.squeeze(originals[i]), np.squeeze(reconstructions[i]), data_range=2))
-                mssims.append(compare_ssim(np.squeeze(originals[i]), np.squeeze(reconstructions[i]), data_range=2, win_size=9))
-                
-            avg_psnr = sum(psnrs)/len(psnrs)
-            avg_psnrs.append(avg_psnr)
-            avg_mssim = sum(mssims)/len(mssims)
-            avg_mssims.append(avg_mssim)
-        psnr = sum(avg_psnrs)/len(avg_psnrs)
-        mssim = sum(avg_mssims)/len(avg_mssims)
-        
-        psnr_summary = tf.Summary()
-        mssim_summary = tf.Summary()
-        psnr_summary.value.add(tag='avg_val_psnr', simple_value=psnr)
-        mssim_summary.value.add(tag='avg_val_mssim', simple_value=mssim)
+                print("Number of output images = " + str(len(reconstructions[0])))
+                print("Shape of each image = " + str(reconstructions[0][0].shape))
 
-        return psnr_summary, mssim_summary
+            for j in range(self._config.stages):
+                psnrs_stage = []
+                mssims_stage = []
+                for i in range(self._config.batch_size):
+                    psnrs_stage.append(compare_psnr(np.squeeze(originals[i]), np.squeeze(reconstructions[i][j]), data_range=2))
+                    mssims_stage.append(compare_ssim(np.squeeze(originals[i]), np.squeeze(reconstructions[i][j]), data_range=2, win_size=9))
+                avg_psnrs_stages[j].append(sum(psnrs_stage)/len(psnrs_stage))
+                avg_mssims_stages[j].append(sum(mssims_stage)/len(mssims_stage))
+            
+        psnr_summaries = []
+        mssim_summaries = []
+        for j in range(self._config.stages):
+            psnr_summary = tf.Summary()
+            mssim_summary = tf.Summary()
+            psnr_summary.value.add(tag='avg_val_psnr_stage' + str(j), simple_value=sum(avg_psnrs_stages[j])/len(avg_psnrs_stages[j]))
+            mssim_summary.value.add(tag='avg_val_mssim_stage' + str(j), simple_value=sum(avg_psnrs_stages[j])/len(avg_psnrs_stages[j]))
+            psnr_summaries.append(psnr_summary)
+            mssim_summaries.append(mssim_summary)
+
+        return psnr_summaries, mssim_summaries
 
 
     def _setup_model(self):
@@ -341,7 +347,7 @@ class Res2pix(object):
         self._ops.val_bitcode_histo = tf.summary.histogram("val_bitcode_histogram", self._ops.binary_representations)
         
         
-        
+        self._ops.val_bitplane_summary = tf.summary.image("val_bitplane_img", self._ops.binary_representations[0][:,:,0])
         self._ops.val_in_out_img_summary = tf.summary.image("val_in_out_img", tf.concat([self._ops.in_img, self._ops.gen_out], 1))
         self._ops.val_summary = tf.summary.merge([self._ops.val_in_out_img_summary,
                                                   self._ops.val_psnr_summary,
