@@ -352,8 +352,8 @@ class Res2pix(object):
         
         
         w, h, _ = self._ops.binary_representations[0][0].get_shape()
-        print("shape of tf.reshape(self._ops.binary_representations[0][0,:,:,0], [1, w, h, 0]) = " + str(tf.reshape(self._ops.binary_representations[0][0,:,:,0], [1, w, h, 0]).get_shape()))
-        self._ops.val_bitplane_summary = tf.summary.image("val_bitplane_img", tf.reshape(self._ops.binary_representations[0][0,:,:,0], [1, w, h, 0]))
+        print("shape of tf.reshape(self._ops.binary_representations[0][0,:,:,0], [1, w, h, 1]) = " + str(tf.reshape(self._ops.binary_representations[0][0,:,:,0], [1, w, h, 1]).get_shape()))
+        self._ops.val_bitplane_summary = tf.summary.image("val_bitplane_img", tf.reshape(self._ops.binary_representations[0][0,:,:,0], [1, w, h, 1]))
         self._ops.val_in_out_img_summary = tf.summary.image("val_in_out_img", tf.concat([self._ops.in_img, self._ops.gen_out], 1))
         self._ops.val_summary = tf.summary.merge([self._ops.val_in_out_img_summary,
                                                   self._ops.val_psnr_summary,
