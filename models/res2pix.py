@@ -255,7 +255,9 @@ class Res2pix(object):
             originals, reconstructions = sess.run([self._ops.in_img, self._ops.gen_preds], feed_dict={self._ops.in_img: batch})
             
             if self._config.debug:
-                print("Number of output images = " + str(len(reconstructions[0])))
+                print("Shape of originals = " + str(originals.shape))
+                print("Shape of reconstructions = " + str(reconstructions.shape))
+                
                 print("Shape of each image = " + str(reconstructions[0][0].shape))
 
             for j in range(self._config.stages):
@@ -352,7 +354,6 @@ class Res2pix(object):
         
         
         w, h, _ = self._ops.binary_representations[0][0].get_shape()
-        print("shape of tf.reshape(self._ops.binary_representations[0][0,:,:,0], [1, w, h, 1]) = " + str(tf.reshape(self._ops.binary_representations[0][0,:,:,0], [1, int(w), int(h), 1]).get_shape()))
         self._ops.val_bitplane_summary = tf.summary.image("val_bitplane_img", tf.reshape(self._ops.binary_representations[0][0,:,:,0], [1, int(w), int(h), 1]))
         self._ops.val_in_out_img_summary = tf.summary.image("val_in_out_img", tf.concat([self._ops.in_img, self._ops.gen_out], 1))
         self._ops.val_summary = tf.summary.merge([self._ops.val_in_out_img_summary,
