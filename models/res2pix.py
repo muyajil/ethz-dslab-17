@@ -293,7 +293,8 @@ class Res2pix(object):
                                                             self._config.input_dimensions.depth])
                                                             
         # architecture
-        self._ops.gen_preds = self._generator_R2I_decode(self._ops.in_img)
+        # self._ops.gen_preds = self._generator_R2I_decode(self._ops.in_img)
+        self._ops.gen_preds = self._generator_R2I_predconn(self._ops.in_img)
         # gen_res_preds, gen_residuals = self._generator_res2res(self._ops.in_img)
         
         # res2pix output
@@ -488,7 +489,7 @@ class Res2pix(object):
                 current_residual = image - current_prediction
                 stage_preds.append(current_prediction)
             
-             # compute bpp
+            # compute bpp
             bin_dim = 1
             for dim in self._ops.binary_representations[0].get_shape().as_list()[1:]:
                 bin_dim *= dim
@@ -593,14 +594,15 @@ class Res2pix(object):
     def _generator_R2I_predconn(self, image):
         with tf.variable_scope("generator") as scope:
             stage_preds = []
-            current_prediction = 0
+            current_d8 = 0
             current_residual = image
             for s in range(self._config.stages + 1)[1:]:
-                current_prediction = self._R2I_predconn_stage(current_residual, current_prediction, name="stage_" + str(s))
+                current_prediction, next_d8 = self._R2I_predconn_stage(current_residual, current_d8, name="stage_" + str(s))
+                current_d8 += next_d8
                 current_residual = image - current_prediction
                 stage_preds.append(current_prediction)
             
-             # compute bpp
+            # compute bpp
             bin_dim = 1
             for dim in self._ops.binary_representations[0].get_shape().as_list()[1:]:
                 bin_dim *= dim
@@ -608,7 +610,7 @@ class Res2pix(object):
                 
             return stage_preds
             
-    def _R2I_predconn_stage(self, res_in, prev_pred, name="stage"):
+    def _R2I_predconn_stage(self, res_in, prev_d8, name="stage"):
         with tf.variable_scope(name):
 
             batchsize, height, width, channels = res_in.get_shape().as_list()
@@ -636,29 +638,10 @@ class Res2pix(object):
             d6 = tf.nn.relu(batch_norm(conv2d(d5, 64, kernel_height=3, kernel_width=3, stride_height=1, stride_width=1, stddev=0.02, name='g_d6_conv'), name='g_bn_d6'))
             d7 = deconv2d(d6, [self._config.batch_size, c_height*8, c_width*8, 64], kernel_height=2, kernel_width=2, stride_height=2, stride_width=2, stddev=0.02, name="g_d7_deconv")
             d8 = conv2d(d7, channels, kernel_height=3, kernel_width=3, stride_height=1, stride_width=1, stddev=0.02, name='g_d8_conv')
-            pred = tf.nn.tanh(d8 + prev_pred)
+            
+            pred = tf.nn.tanh(d8 + prev_d8)
     
-            # debug
-            if self._config.debug:
-                print("Stage: Shape of input = " + str(res_in.get_shape()))
-                print("Stage: Shape of e1 = " + str(e1.get_shape()))
-                print("Stage: Shape of e2 = " + str(e2.get_shape()))
-                print("Stage: Shape of e3 = " + str(e3.get_shape()))
-                print("Stage: Shape of e4 = " + str(e4.get_shape()))
-                print("Stage: Shape of e5 = " + str(e5.get_shape()))
-                print("Stage: Shape of e6 = " + str(e6.get_shape()))
-                print("Stage: Shape of e7 = " + str(e7.get_shape()))
-                print("Stage: Shape of binary representation = " + str(self._ops.binary_representations[-1].get_shape()))
-                print("Stage: Shape of d1 = " + str(d1.get_shape()))
-                print("Stage: Shape of d2 = " + str(d2.get_shape()))
-                print("Stage: Shape of d3 = " + str(d3.get_shape()))
-                print("Stage: Shape of d4 = " + str(d4.get_shape()))
-                print("Stage: Shape of d5 = " + str(d5.get_shape()))
-                print("Stage: Shape of d6 = " + str(d6.get_shape()))
-                print("Stage: Shape of d7 = " + str(d7.get_shape()))
-                print("Stage: Shape of d8 = " + str(d8.get_shape()))
-    
-            return pred
+            return pred, d8
             
             
     def _generator_R2R(self, image):
