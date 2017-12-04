@@ -607,10 +607,11 @@ class Res2pix(object):
             current_d8 = 0
             current_residual = image
             for s in range(self._config.stages + 1)[1:]:
-                current_prediction, next_d8 = self._R2I_predconn_stage(current_residual, current_d8, name="stage_" + str(s))
-                current_d8 += next_d8
-                current_residual = image - current_prediction
-                stage_preds.append(current_prediction)
+                with tf.variable_scope("stage_" + str(s)):
+                    current_prediction, next_d8 = self._R2I_predconn_stage(current_residual, current_d8, name="s_" + str(s))
+                    current_d8 += next_d8
+                    current_residual = image - current_prediction
+                    stage_preds.append(current_prediction)
             
             # compute bpp
             bin_dim = 1
