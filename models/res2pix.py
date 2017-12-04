@@ -108,6 +108,7 @@ class Ops(object):
     val_bitplane_summary = None
     val_psnr_summary = None
     val_summary = None
+    gen_loss_reconstr_stages_summaries = None
 
 
     
@@ -318,11 +319,14 @@ class Res2pix(object):
         
         # res2pix loss
         # --------------
-        stage_losses = []      
         loss = 0
+        self._ops.gen_loss_reconstr_stages_summaries = []
+        i = 0
         for pred in self._ops.gen_preds:
             stage_loss = tf.reduce_mean(tf.reduce_sum(tf.square(self._ops.in_img - pred), [1, 2, 3]))
+            self._ops.gen_loss_reconstr_stages_summaries.append(tf.summary.scalar("gen_loss_reconstr_stage" + str(i), stage_loss))
             loss = loss + stage_loss
+            i += 1
         self._ops.gen_loss_reconstr = loss
 
         # res2res loss
@@ -352,7 +356,9 @@ class Res2pix(object):
                                                   self._ops.gen_loss_adv_summary,
                                                   self._ops.gen_loss_reconstr_summary,
                                                   self._ops.gen_loss_summary])
-        self._ops.gen_reconstr_summary = tf.summary.merge([self._ops.gen_loss_reconstr_summary])
+                                                  
+        self._ops.gen_reconstr_summary = tf.summary.merge(self._ops.gen_loss_reconstr_stages_summaries.append(self._ops.gen_loss_reconstr_summary))
+        
         self._ops.val_psnr_summary = tf.summary.scalar("val_psnr", self._ops.psnr)
         self._ops.val_bitcode_histo = tf.summary.histogram("val_bitcode_histogram", self._ops.binary_representations)
         
