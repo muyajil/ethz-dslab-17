@@ -47,8 +47,8 @@ class Config(object):
                  input_dimensions,
                  log_dir,
                  gen_lambda=1,
-                 adam_beta1=0.5,
-                 learning_rate=0.0002,
+                 adam_beta1=0.9,
+                 learning_rate=0.001,
                  pretrain_epochs=1,
                  stages=1,
                  debug=False,
@@ -416,7 +416,7 @@ class Res2pix(object):
                 current_residual = image - current_prediction
                 stage_preds.append(current_prediction)
             
-             # compute bpp
+            # compute bpp
             bin_dim = 1
             for dim in self._ops.binary_representations[0].get_shape().as_list()[1:]:
                 bin_dim *= dim
