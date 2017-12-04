@@ -25,6 +25,7 @@ class Config(object):
     
     debug = None
     show_jpeg = None
+    steps_between_val = None
 
     # parameters for loging
     log_dir = None
@@ -51,7 +52,8 @@ class Config(object):
                  pretrain_epochs=1,
                  stages=1,
                  debug=False,
-                 show_jpeg=True):
+                 show_jpeg=True,
+                 steps_between_val=100):
                      
         self.batch_size = batch_size
         self.input_dimensions = input_dimensions
@@ -63,6 +65,7 @@ class Config(object):
         self.stages = stages
         self.debug = debug
         self.show_jpeg = show_jpeg
+        self.steps_between_val = steps_between_val
 
 
 class Ops(object):
@@ -171,7 +174,7 @@ class Res2pix(object):
                 print("Epoch: [%2d]\tTrain Step: [%2d]\tBatch: [%2d]\tTime: %4.4f" % (epoch + 1, train_step, batch_num + 1,  time.time() - start_time))
                 
                 # evaluation
-                if train_step % 100 == 0:
+                if train_step % self._config.steps_between_val == 0:
                     
                     # show images
                     for batch in validation_set.batch_iter(stop_after_epoch=True):

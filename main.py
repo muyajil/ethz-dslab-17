@@ -66,5 +66,6 @@ if __name__ == "__main__":
                                     gen_lambda=1,
                                     learning_rate=0.001,
                                     stages=8,
-                                    show_jpeg=False))
+                                    show_jpeg=False,
+                                    steps_between_val=10))
     run_model(args.epochs, args.split_ratio)
