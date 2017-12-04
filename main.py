@@ -65,6 +65,7 @@ if __name__ == "__main__":
                                     debug=True,
                                     gen_lambda=1,
                                     learning_rate=0.001,
+                                    adam_beta1=0.5,
                                     stages=8,
                                     show_jpeg=False,
                                     steps_between_val=50))

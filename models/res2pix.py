@@ -109,6 +109,7 @@ class Ops(object):
     val_psnr_summary = None
     val_summary = None
     gen_loss_reconstr_stages_summaries = None
+    residual_img_summary = None
 
 
     
@@ -179,9 +180,10 @@ class Res2pix(object):
                     
                     # show images
                     for batch in validation_set.batch_iter(stop_after_epoch=True):
-                        summary_str1, summary_str2 = sess.run([self._ops.val_in_out_img_summary, self._ops.val_bitplane_summary], feed_dict={self._ops.in_img: batch})
+                        summary_str1, summary_str2, summary_str3 = sess.run([self._ops.val_in_out_img_summary, self._ops.val_bitplane_summary, self._ops.residual_img_summary], feed_dict={self._ops.in_img: batch})
                         writer.add_summary(summary_str1, global_step=train_step)
                         writer.add_summary(summary_str2, global_step=train_step)
+                        writer.add_summary(summary_str3, global_step=train_step)
                         break # we only do one batch
                     
                     # psnr and mssim
@@ -321,13 +323,17 @@ class Res2pix(object):
         # --------------
         loss = 0
         self._ops.gen_loss_reconstr_stages_summaries = []
+        residual_summaries = []
         i = 0
         for pred in self._ops.gen_preds:
-            stage_loss = tf.reduce_mean(tf.reduce_sum(tf.square(self._ops.in_img - pred), [1, 2, 3]))
+            stage_residual = self._ops.in_img - pred
+            stage_loss = tf.reduce_mean(tf.reduce_sum(tf.square(stage_residual), [1, 2, 3]))
             self._ops.gen_loss_reconstr_stages_summaries.append(tf.summary.scalar("gen_loss_reconstr_stage" + str(i), stage_loss))
+            residual_summaries.append(tf.summary.image("residual_img_stage" + str(i), stage_residual[0]))
             loss = loss + stage_loss
             i += 1
         self._ops.gen_loss_reconstr = loss
+        self._ops.residual_img_summary = tf.summary.merge(residual_summaries)
 
         # res2res loss
         # --------------
@@ -364,10 +370,8 @@ class Res2pix(object):
         self._ops.val_psnr_summary = tf.summary.scalar("val_psnr", self._ops.psnr)
         self._ops.val_bitcode_histo = tf.summary.histogram("val_bitcode_histogram", self._ops.binary_representations)
         
-        
-        
         w, h, _ = self._ops.binary_representations[0][0].get_shape()
-        self._ops.val_bitplane_summary = tf.summary.image("val_bitplane_img", tf.reshape(self._ops.binary_representations[0][0,:,:,0], [1, int(w), int(h), 1]))
+        self._ops.val_bitplane_summary = tf.summary.image("val_bitplane_img", tf.reshape(self._ops.binary_representations[1][0,:,:,0], [1, int(w), int(h), 1]))
         self._ops.val_in_out_img_summary = tf.summary.image("val_in_out_img", tf.concat([self._ops.in_img, self._ops.gen_out], 1))
         self._ops.val_summary = tf.summary.merge([self._ops.val_in_out_img_summary,
                                                   self._ops.val_psnr_summary,
