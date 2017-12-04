@@ -365,7 +365,7 @@ class Res2pix(object):
                                                   self._ops.gen_loss_reconstr_summary,
                                                   self._ops.gen_loss_summary])
                                       
-        reconstr_sum = self._ops.gen_loss_reconstr_stages_summaries
+        reconstr_sum = list(self._ops.gen_loss_reconstr_stages_summaries)
         reconstr_sum.append(self._ops.gen_loss_reconstr_summary)
         self._ops.gen_reconstr_summary = tf.summary.merge(reconstr_sum)
         
@@ -374,7 +374,7 @@ class Res2pix(object):
         
         w, h, _ = self._ops.binary_representations[0][0].get_shape()
         self._ops.val_bitplane_summary = tf.summary.image("val_bitplane_img", tf.reshape(self._ops.binary_representations[1][0,:,:,0], [1, int(w), int(h), 1]))
-        images = self._ops.gen_preds
+        images = list(self._ops.gen_preds)
         images.append(self._ops.in_img)
         self._ops.img_summary = tf.summary.image("val_img_summary", tf.concat(images, 1))
         self._ops.val_in_out_img_summary = tf.summary.image("val_in_out_img", tf.concat([self._ops.in_img, self._ops.gen_out], 1))
