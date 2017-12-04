@@ -350,7 +350,8 @@ class Res2pix(object):
         self._ops.val_bitcode_histo = tf.summary.histogram("val_bitcode_histogram", self._ops.binary_representations)
         
         
-        self._ops.val_bitplane_summary = tf.summary.image("val_bitplane_img", self._ops.binary_representations[0][:,:,0])
+        print("shape of binary_representations[0] = " + str(self._ops.binary_representations[0].get_shape()))
+        self._ops.val_bitplane_summary = tf.summary.image("val_bitplane_img", self._ops.binary_representations[0])
         self._ops.val_in_out_img_summary = tf.summary.image("val_in_out_img", tf.concat([self._ops.in_img, self._ops.gen_out], 1))
         self._ops.val_summary = tf.summary.merge([self._ops.val_in_out_img_summary,
                                                   self._ops.val_psnr_summary,
