@@ -277,7 +277,7 @@ class Res2pix(object):
             psnr_summary = tf.Summary()
             mssim_summary = tf.Summary()
             psnr_summary.value.add(tag='avg_val_psnr_stage' + str(j), simple_value=sum(avg_psnrs_stages[j])/len(avg_psnrs_stages[j]))
-            mssim_summary.value.add(tag='avg_val_mssim_stage' + str(j), simple_value=sum(avg_psnrs_stages[j])/len(avg_psnrs_stages[j]))
+            mssim_summary.value.add(tag='avg_val_mssim_stage' + str(j), simple_value=sum(avg_mssims_stages[j])/len(avg_mssims_stages[j]))
             psnr_summaries.append(psnr_summary)
             mssim_summaries.append(mssim_summary)
 
@@ -319,9 +319,11 @@ class Res2pix(object):
         # res2pix loss
         # --------------
         stage_losses = []      
+        loss = 0
         for pred in self._ops.gen_preds:
-            stage_losses.append(tf.reduce_mean(tf.reduce_sum(tf.square(self._ops.in_img - pred), [1, 2, 3])))
-        self._ops.gen_loss_reconstr = tf.reduce_sum(tf.convert_to_tensor(stage_losses))
+            stage_loss = tf.reduce_mean(tf.reduce_sum(tf.square(self._ops.in_img - pred), [1, 2, 3]))
+            loss = loss + stage_loss
+        self._ops.gen_loss_reconstr = loss
 
         # res2res loss
         # --------------
