@@ -356,8 +356,10 @@ class Res2pix(object):
                                                   self._ops.gen_loss_adv_summary,
                                                   self._ops.gen_loss_reconstr_summary,
                                                   self._ops.gen_loss_summary])
-                                                  
-        self._ops.gen_reconstr_summary = tf.summary.merge(self._ops.gen_loss_reconstr_stages_summaries.append(self._ops.gen_loss_reconstr_summary))
+                                      
+        reconstr_sum = self._ops.gen_loss_reconstr_stages_summaries
+        reconstr_sum.append(self._ops.gen_loss_reconstr_summary)
+        self._ops.gen_reconstr_summary = tf.summary.merge(reconstr_sum)
         
         self._ops.val_psnr_summary = tf.summary.scalar("val_psnr", self._ops.psnr)
         self._ops.val_bitcode_histo = tf.summary.histogram("val_bitcode_histogram", self._ops.binary_representations)
