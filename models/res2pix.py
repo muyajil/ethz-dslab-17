@@ -260,15 +260,14 @@ class Res2pix(object):
 
                 print("Length of reconstructions = " + str(len(reconstructions)))
                 print("Shape of one reconstruction = " + str(reconstructions[0].shape))
-                
                 print("Shape of each image = " + str(reconstructions[0][0].shape))
 
             for j in range(self._config.stages):
                 psnrs_stage = []
                 mssims_stage = []
                 for i in range(self._config.batch_size):
-                    psnrs_stage.append(compare_psnr(np.squeeze(originals[i]), np.squeeze(reconstructions[i][j]), data_range=2))
-                    mssims_stage.append(compare_ssim(np.squeeze(originals[i]), np.squeeze(reconstructions[i][j]), data_range=2, win_size=9))
+                    psnrs_stage.append(compare_psnr(np.squeeze(originals[i]), np.squeeze(reconstructions[j][i]), data_range=2))
+                    mssims_stage.append(compare_ssim(np.squeeze(originals[i]), np.squeeze(reconstructions[j][i]), data_range=2, win_size=9))
                 avg_psnrs_stages[j].append(sum(psnrs_stage)/len(psnrs_stage))
                 avg_mssims_stages[j].append(sum(mssims_stage)/len(mssims_stage))
             
