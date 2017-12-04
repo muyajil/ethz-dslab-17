@@ -329,7 +329,7 @@ class Res2pix(object):
             stage_residual = self._ops.in_img - pred
             stage_loss = tf.reduce_mean(tf.reduce_sum(tf.square(stage_residual), [1, 2, 3]))
             self._ops.gen_loss_reconstr_stages_summaries.append(tf.summary.scalar("gen_loss_reconstr_stage" + str(i), stage_loss))
-            residual_summaries.append(tf.summary.image("residual_img_stage" + str(i), stage_residual[0]))
+            residual_summaries.append(tf.summary.image("residual_img_stage" + str(i), stage_residual))
             loss = loss + stage_loss
             i += 1
         self._ops.gen_loss_reconstr = loss
