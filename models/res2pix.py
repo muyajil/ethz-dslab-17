@@ -256,7 +256,10 @@ class Res2pix(object):
             
             if self._config.debug:
                 print("Shape of originals = " + str(originals.shape))
-                print("Shape of reconstructions = " + str(reconstructions.shape))
+                print("Shape of one original = " + str(originals[0].shape))
+
+                print("Length of reconstructions = " + str(len(reconstructions)))
+                print("Shape of one reconstruction = " + str(reconstructions[0].shape))
                 
                 print("Shape of each image = " + str(reconstructions[0][0].shape))
 
