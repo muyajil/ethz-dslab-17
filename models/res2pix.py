@@ -305,7 +305,8 @@ class Res2pix(object):
             dis_out_fake, dis_logits_fake = self._discriminator(self._ops.gen_out, reuse=True)
 
 
-        with tf.variable_scope("loss"):
+        losses = []
+        with tf.variable_scope("optimization"):
             # loss and metrics functions
             with tf.variable_scope("GAN_loss"):
                 self._ops.dis_loss_real = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(logits=dis_logits_real, labels=tf.ones_like(dis_out_real)))
@@ -317,13 +318,12 @@ class Res2pix(object):
                 # res2pix loss
                 # --------------
                 loss = 0
-                self._ops.gen_loss_reconstr_stages_summaries = []
                 residuals = []
                 i = 0
                 for pred in self._ops.gen_preds:
                     stage_residual = self._ops.in_img - pred
                     stage_loss = tf.reduce_mean(tf.reduce_sum(tf.square(stage_residual), [1, 2, 3]))
-                    self._ops.gen_loss_reconstr_stages_summaries.append(tf.summary.scalar("gen_loss_reconstr_stage" + str(i), stage_loss))
+                    losses.append(stage_loss)
                     residuals.append(stage_residual)
                     loss = loss + stage_loss
                     i += 1
@@ -337,6 +337,11 @@ class Res2pix(object):
 
             self._ops.gen_loss = self._ops.gen_loss_adv + self._config.gen_lambda * self._ops.gen_loss_reconstr
             self._ops.psnr = psnr(self._ops.in_img, self._ops.gen_out)
+            
+        self._ops.gen_loss_reconstr_stages_summaries = []
+        for i in range(len(losses)):
+            self._ops.gen_loss_reconstr_stages_summaries.append(tf.summary.scalar("gen_loss_reconstr_stage" + str(i), losses[i]))
+
         
         # tensorboard
         self._ops.dis_loss_real_summary = tf.summary.scalar("dis_loss_real", self._ops.dis_loss_real)
@@ -361,38 +366,40 @@ class Res2pix(object):
         self._ops.gen_reconstr_summary = tf.summary.merge(reconstr_sum)
         
         # image summary
-        b, w, h, d = self._ops.binary_representations[0].get_shape().as_list()
-        bitmaps = [tf.concat(tf.unstack(stage_rep, axis=3), 1) for stage_rep in self._ops.binary_representations]
-        images = list(self._ops.gen_preds)
-        images.append(self._ops.in_img)
-        bitmaps.append(tf.zeros_like(bitmaps[0]))
-        residuals.append(tf.zeros_like(self._ops.in_img))
+        with tf.variable_scope("image_summary"):
+            b, w, h, d = self._ops.binary_representations[0].get_shape().as_list()
+            bitmaps = [tf.concat(tf.unstack(stage_rep, axis=3), 1) for stage_rep in self._ops.binary_representations]
+            images = list(self._ops.gen_preds)
+            images.append(self._ops.in_img)
+            bitmaps.append(tf.zeros_like(bitmaps[0]))
+            residuals.append(tf.zeros_like(self._ops.in_img))
+            images_c = tf.concat(images, 1)
+            bitmaps_c = tf.expand_dims(tf.concat(bitmaps, 1), -1)
+            residuals_c = tf.concat(residuals, 1)
+            image_summary =  tf.concat([images_c, bitmaps_c,  residuals_c], 2)
         
-        images_c = tf.concat(images, 1)
-        bitmaps_c = tf.expand_dims(tf.concat(bitmaps, 1), -1)
-        residuals_c = tf.concat(residuals, 1)
-        
-        self._ops.img_summary = tf.summary.image("val_img_summary", tf.concat([images_c, bitmaps_c,  residuals_c], 2), max_outputs=6)
+        self._ops.img_summary = tf.summary.image("val_img_summary", image_summary, max_outputs=6)
 
         # trainable variables and optimizers
         train_vars = tf.trainable_variables()
         dis_vars = [var for var in train_vars if 'd_' in var.name]
         gen_vars = [var for var in train_vars if 'g_' in var.name]
 
-        with tf.variable_scope("GAN_optimizer_discriminator"):
-            dis_opti = tf.train.AdamOptimizer(self._config.learning_rate, beta1=self._config.adam_beta1)
-            dis_grads_and_vars = dis_opti.compute_gradients(self._ops.dis_loss, var_list=dis_vars)
-            self._ops.dis_optimizer = dis_opti.apply_gradients(dis_grads_and_vars)
-        
-        with tf.variable_scope("GAN_optimizer_generator"):
-            gen_opti = tf.train.AdamOptimizer(self._config.learning_rate, beta1=self._config.adam_beta1)
-            gen_grads_and_vars = gen_opti.compute_gradients(self._ops.gen_loss, var_list=gen_vars)
-            self._ops.gen_optimizer = gen_opti.apply_gradients(gen_grads_and_vars)
-        
-        with tf.variable_scope("reconstruction_optimizer_generator"):
-            gen_reconstr_opti = tf.train.AdamOptimizer(self._config.learning_rate, beta1=self._config.adam_beta1)
-            gen_reconstr_grads_and_vars = gen_reconstr_opti.compute_gradients(self._ops.gen_loss_reconstr, var_list=gen_vars)
-            self._ops.gen_reconstr_optimizer = gen_reconstr_opti.apply_gradients(gen_reconstr_grads_and_vars)
+        with tf.variable_scope("optimization"):
+            with tf.variable_scope("GAN_optimizer_discriminator"):
+                dis_opti = tf.train.AdamOptimizer(self._config.learning_rate, beta1=self._config.adam_beta1)
+                dis_grads_and_vars = dis_opti.compute_gradients(self._ops.dis_loss, var_list=dis_vars)
+                self._ops.dis_optimizer = dis_opti.apply_gradients(dis_grads_and_vars)
+            
+            with tf.variable_scope("GAN_optimizer_generator"):
+                gen_opti = tf.train.AdamOptimizer(self._config.learning_rate, beta1=self._config.adam_beta1)
+                gen_grads_and_vars = gen_opti.compute_gradients(self._ops.gen_loss, var_list=gen_vars)
+                self._ops.gen_optimizer = gen_opti.apply_gradients(gen_grads_and_vars)
+            
+            with tf.variable_scope("reconstruction_optimizer_generator"):
+                gen_reconstr_opti = tf.train.AdamOptimizer(self._config.learning_rate, beta1=self._config.adam_beta1)
+                gen_reconstr_grads_and_vars = gen_reconstr_opti.compute_gradients(self._ops.gen_loss_reconstr, var_list=gen_vars)
+                self._ops.gen_reconstr_optimizer = gen_reconstr_opti.apply_gradients(gen_reconstr_grads_and_vars)
             
         # initialization
         self._ops.init_op = tf.global_variables_initializer()
