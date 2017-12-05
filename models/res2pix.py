@@ -277,7 +277,7 @@ class Res2pix(object):
     def _setup_model(self):
         
         # input
-        with tf.variable_scope("input batch"):
+        with tf.variable_scope("input"):
             self._ops.in_img = tf.placeholder(tf.float32, [self._config.batch_size,
                                                             self._config.input_dimensions.height,
                                                             self._config.input_dimensions.width,
