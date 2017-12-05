@@ -64,7 +64,7 @@ if __name__ == "__main__":
                                     pretrain_epochs=30,
                                     debug=True,
                                     gen_lambda=1,
-                                    learning_rate=0.01,
+                                    learning_rate=0.0001,
                                     adam_beta1=0.9,
                                     stages=8,
                                     show_jpeg=False,
