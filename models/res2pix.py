@@ -252,8 +252,9 @@ class Res2pix(object):
     def _evaluation(self, sess, validation_set):
         
         print("Evaluating...")
-        avg_psnrs_stages = [[]]*self._config.stages
-        avg_mssims_stages = [[]]*self._config.stages
+        avg_psnrs_stages = [[] for _ in range(self._config.stages)]
+        avg_mssims_stages = [[] for _ in range(self._config.stages)]
+
         for batch in validation_set.batch_iter(stop_after_epoch=True):
             
             # get images from tf session  
