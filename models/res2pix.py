@@ -193,7 +193,7 @@ class Res2pix(object):
         
     def _evaluate_jpeg(self, sess, validation_set):
         qualities = []
-        for quality in range(0, 101, 5)[1:]:
+        for quality in range(0, 101, 1)[1:]:
             print("measuring performance for quality = " + str(quality))
             avg_psnrs = []
             avg_mssims = []

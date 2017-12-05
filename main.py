@@ -67,6 +67,6 @@ if __name__ == "__main__":
                                     learning_rate=0.001,
                                     adam_beta1=0.9,
                                     stages=8,
-                                    show_jpeg=False,
+                                    show_jpeg=True,
                                     steps_between_val=25))
     run_model(args.epochs, args.split_ratio)
