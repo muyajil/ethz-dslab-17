@@ -277,60 +277,66 @@ class Res2pix(object):
     def _setup_model(self):
         
         # input
-        self._ops.in_img = tf.placeholder(tf.float32, [self._config.batch_size,
+        with tf.variable_scope("input batch"):
+            self._ops.in_img = tf.placeholder(tf.float32, [self._config.batch_size,
                                                             self._config.input_dimensions.height,
                                                             self._config.input_dimensions.width,
                                                             self._config.input_dimensions.depth])
                                                             
-        # architecture
-        # self._ops.gen_preds = self._generator_R2I_decode(self._ops.in_img)
-        # self._ops.gen_preds = self._generator_R2I_full(self._ops.in_img)
-        self._ops.gen_preds = self._generator_R2I_predconn(self._ops.in_img)
-        # gen_res_preds, gen_residuals = self._generator_res2res(self._ops.in_img)
+        with tf.variable_scope("generator"):
+            # architecture
+            # self._ops.gen_preds = self._generator_R2I_decode(self._ops.in_img)
+            # self._ops.gen_preds = self._generator_R2I_full(self._ops.in_img)
+            self._ops.gen_preds = self._generator_R2I_predconn(self._ops.in_img)
+            # gen_res_preds, gen_residuals = self._generator_res2res(self._ops.in_img)
         
-        # res2pix output
-        # --------------
-        self._ops.gen_out = self._ops.gen_preds[-1]
+            # res2pix output
+            # --------------
+            self._ops.gen_out = self._ops.gen_preds[-1]
         
-        # res2res output
-        # --------------
-        # self._ops.gen_out = 0
-        # for res_pred in gen_res_preds:
-        #     self._ops.gen_out += res_pred
+            # res2res output
+            # --------------
+            # self._ops.gen_out = 0
+            # for res_pred in gen_res_preds:
+            #     self._ops.gen_out += res_pred
             
-        dis_out_real, dis_logits_real = self._discriminator(self._ops.in_img, reuse=False)
-        dis_out_fake, dis_logits_fake = self._discriminator(self._ops.gen_out, reuse=True)
+        with tf.variable_scope("discriminator"):
+            dis_out_real, dis_logits_real = self._discriminator(self._ops.in_img, reuse=False)
+            dis_out_fake, dis_logits_fake = self._discriminator(self._ops.gen_out, reuse=True)
 
-        # loss and metrics functions
-        self._ops.dis_loss_real = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(logits=dis_logits_real, labels=tf.ones_like(dis_out_real)))
-        self._ops.dis_loss_fake = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(logits=dis_logits_fake, labels=tf.zeros_like(dis_out_fake)))
-        self._ops.dis_loss = self._ops.dis_loss_real + self._ops.dis_loss_fake
-        self._ops.gen_loss_adv = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(logits=dis_logits_fake, labels=tf.ones_like(dis_out_fake)))       
-        
-        # res2pix loss
-        # --------------
-        loss = 0
-        self._ops.gen_loss_reconstr_stages_summaries = []
-        residuals = []
-        i = 0
-        for pred in self._ops.gen_preds:
-            stage_residual = self._ops.in_img - pred
-            stage_loss = tf.reduce_mean(tf.reduce_sum(tf.square(stage_residual), [1, 2, 3]))
-            self._ops.gen_loss_reconstr_stages_summaries.append(tf.summary.scalar("gen_loss_reconstr_stage" + str(i), stage_loss))
-            residuals.append(stage_residual)
-            loss = loss + stage_loss
-            i += 1
-        self._ops.gen_loss_reconstr = loss
 
-        # res2res loss
-        # --------------
-        # stage_losses = []
-        # for res in gen_residuals[1:]:
-        #     stage_losses.append(tf.reduce_mean(tf.reduce_sum(tf.square(res), [1, 2, 3])))
-        # self._ops.gen_loss_reconstr = tf.reduce_sum(tf.convert_to_tensor(stage_losses))
+        with tf.variable_scope("loss"):
+            # loss and metrics functions
+            with tf.variable_scope("GAN loss"):
+                self._ops.dis_loss_real = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(logits=dis_logits_real, labels=tf.ones_like(dis_out_real)))
+                self._ops.dis_loss_fake = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(logits=dis_logits_fake, labels=tf.zeros_like(dis_out_fake)))
+                self._ops.dis_loss = self._ops.dis_loss_real + self._ops.dis_loss_fake
+                self._ops.gen_loss_adv = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(logits=dis_logits_fake, labels=tf.ones_like(dis_out_fake)))       
+            
+            with tf.variable_scope("reconstruction loss"):
+                # res2pix loss
+                # --------------
+                loss = 0
+                self._ops.gen_loss_reconstr_stages_summaries = []
+                residuals = []
+                i = 0
+                for pred in self._ops.gen_preds:
+                    stage_residual = self._ops.in_img - pred
+                    stage_loss = tf.reduce_mean(tf.reduce_sum(tf.square(stage_residual), [1, 2, 3]))
+                    self._ops.gen_loss_reconstr_stages_summaries.append(tf.summary.scalar("gen_loss_reconstr_stage" + str(i), stage_loss))
+                    residuals.append(stage_residual)
+                    loss = loss + stage_loss
+                    i += 1
+                self._ops.gen_loss_reconstr = loss
+                # res2res loss
+                # --------------
+                # stage_losses = []
+                # for res in gen_residuals[1:]:
+                #     stage_losses.append(tf.reduce_mean(tf.reduce_sum(tf.square(res), [1, 2, 3])))
+                # self._ops.gen_loss_reconstr = tf.reduce_sum(tf.convert_to_tensor(stage_losses))
 
-        self._ops.gen_loss = self._ops.gen_loss_adv + self._config.gen_lambda * self._ops.gen_loss_reconstr
-        self._ops.psnr = psnr(self._ops.in_img, self._ops.gen_out)
+            self._ops.gen_loss = self._ops.gen_loss_adv + self._config.gen_lambda * self._ops.gen_loss_reconstr
+            self._ops.psnr = psnr(self._ops.in_img, self._ops.gen_out)
         
         # tensorboard
         self._ops.dis_loss_real_summary = tf.summary.scalar("dis_loss_real", self._ops.dis_loss_real)
@@ -373,18 +379,21 @@ class Res2pix(object):
         dis_vars = [var for var in train_vars if 'd_' in var.name]
         gen_vars = [var for var in train_vars if 'g_' in var.name]
 
-        dis_opti = tf.train.AdamOptimizer(self._config.learning_rate, beta1=self._config.adam_beta1)
-        dis_grads_and_vars = dis_opti.compute_gradients(self._ops.dis_loss, var_list=dis_vars)
-        self._ops.dis_optimizer = dis_opti.apply_gradients(dis_grads_and_vars)
+        with tf.variable_scope("GAN optimizer discriminator"):
+            dis_opti = tf.train.AdamOptimizer(self._config.learning_rate, beta1=self._config.adam_beta1)
+            dis_grads_and_vars = dis_opti.compute_gradients(self._ops.dis_loss, var_list=dis_vars)
+            self._ops.dis_optimizer = dis_opti.apply_gradients(dis_grads_and_vars)
         
-        gen_opti = tf.train.AdamOptimizer(self._config.learning_rate, beta1=self._config.adam_beta1)
-        gen_grads_and_vars = gen_opti.compute_gradients(self._ops.gen_loss, var_list=gen_vars)
-        self._ops.gen_optimizer = gen_opti.apply_gradients(gen_grads_and_vars)
+        with tf.variable_scope("GAN optimizer generator"):
+            gen_opti = tf.train.AdamOptimizer(self._config.learning_rate, beta1=self._config.adam_beta1)
+            gen_grads_and_vars = gen_opti.compute_gradients(self._ops.gen_loss, var_list=gen_vars)
+            self._ops.gen_optimizer = gen_opti.apply_gradients(gen_grads_and_vars)
         
-        gen_reconstr_opti = tf.train.AdamOptimizer(self._config.learning_rate, beta1=self._config.adam_beta1)
-        gen_reconstr_grads_and_vars = gen_reconstr_opti.compute_gradients(self._ops.gen_loss_reconstr, var_list=gen_vars)
-        self._ops.gen_reconstr_optimizer = gen_reconstr_opti.apply_gradients(gen_reconstr_grads_and_vars)
-        
+        with tf.variable_scope("reconstruction optimizer generator"):
+            gen_reconstr_opti = tf.train.AdamOptimizer(self._config.learning_rate, beta1=self._config.adam_beta1)
+            gen_reconstr_grads_and_vars = gen_reconstr_opti.compute_gradients(self._ops.gen_loss_reconstr, var_list=gen_vars)
+            self._ops.gen_reconstr_optimizer = gen_reconstr_opti.apply_gradients(gen_reconstr_grads_and_vars)
+            
         # initialization
         self._ops.init_op = tf.global_variables_initializer()
         
@@ -396,7 +405,7 @@ class Res2pix(object):
 
 
     def _discriminator(self, image, reuse=False):
-        with tf.variable_scope("discriminator") as scope:
+        with tf.variable_scope("discriminator instance") as scope:
             if reuse:
                 tf.get_variable_scope().reuse_variables()
             else:
@@ -411,246 +420,241 @@ class Res2pix(object):
             
             
     def _generator_R2I_decode(self, image):
-        with tf.variable_scope("generator") as scope:
-            stage_preds = []
-            current_prediction = 0
-            current_conv_links = [0, 0, 0]
+        stage_preds = []
+        current_prediction = 0
+        current_conv_links = [0, 0, 0]
+        
+        current_residual = image
+        for s in range(self._config.stages + 1)[1:]:
+            with tf.variable_scope("stage_" + str(s)):
+                current_prediction, current_conv_links = self._R2I_decode_stage(current_residual, current_conv_links)
+                current_residual = image - current_prediction
+                stage_preds.append(current_prediction)
+        
+        # compute bpp
+        bin_dim = 1
+        for dim in self._ops.binary_representations[0].get_shape().as_list()[1:]:
+            bin_dim *= dim
+        self._code_bits = (bin_dim * self._config.stages)
             
-            current_residual = image
-            for s in range(self._config.stages + 1)[1:]:
-                with tf.variable_scope("stage_" + str(s)):
-                    current_prediction, current_conv_links = self._R2I_decode_stage(current_residual, current_conv_links, name="stage_" + str(s))
-                    current_residual = image - current_prediction
-                    stage_preds.append(current_prediction)
+        return stage_preds
             
-            # compute bpp
-            bin_dim = 1
-            for dim in self._ops.binary_representations[0].get_shape().as_list()[1:]:
-                bin_dim *= dim
-            self._code_bits = (bin_dim * self._config.stages)
-                
-            return stage_preds
-            
-    def _R2I_decode_stage(self, res_in, prev_convs, name="stage"):
-        with tf.variable_scope(name):
+    def _R2I_decode_stage(self, res_in, prev_convs):
 
-            batchsize, height, width, channels = res_in.get_shape().as_list()
-            c_height = int(height / 8)
-            c_width = int(width / 8)
-            
-            # encoder
-            e1 = tf.nn.relu(batch_norm(conv2d(res_in, 64, kernel_height=3, kernel_width=3, stride_height=1, stride_width=1, stddev=0.02, name='g_e1_conv'), name='g_bn_e1'), name='g_ridge_e1')
-            e2 = tf.nn.relu(batch_norm(conv2d(e1, 128, kernel_height=3, kernel_width=3, stride_height=2, stride_width=2, stddev=0.02, name='g_e2_conv'), name='g_bn_e2'), name='g_ridge_e2')
-            e3 = tf.nn.relu(batch_norm(conv2d(e2, 128, kernel_height=3, kernel_width=3, stride_height=1, stride_width=1, stddev=0.02, name='g_e3_conv'), name='g_bn_e3'), name='g_ridge_e3')
-            e4 = tf.nn.relu(batch_norm(conv2d(e3, 256, kernel_height=3, kernel_width=3, stride_height=2, stride_width=2, stddev=0.02, name='g_e4_conv'), name='g_bn_e4'), name='g_ridge_e4')
-            e5 = tf.nn.relu(batch_norm(conv2d(e4, 256, kernel_height=3, kernel_width=3, stride_height=1, stride_width=1, stddev=0.02, name='g_e5_conv'), name='g_bn_e5'), name='g_ridge_e5')
-            e6 = tf.nn.relu(batch_norm(conv2d(e5, 256, kernel_height=3, kernel_width=3, stride_height=2, stride_width=2, stddev=0.02, name='g_e6_conv'), name='g_bn_e6'), name='g_ridge_e6')
-            e7 = tf.nn.tanh(conv2d(e6, 8, kernel_height=1, kernel_width=1, stride_height=1, stride_width=1, stddev=0.02, name='g_e7_conv'), name='g_ridge_e7')
-            
-            # binarization
-            self._ops.binary_representations.append(binarization(e7))
+        batchsize, height, width, channels = res_in.get_shape().as_list()
+        c_height = int(height / 8)
+        c_width = int(width / 8)
+        
+        # encoder
+        e1 = tf.nn.relu(batch_norm(conv2d(res_in, 64, kernel_height=3, kernel_width=3, stride_height=1, stride_width=1, stddev=0.02, name='g_e1_conv'), name='g_bn_e1'), name='g_ridge_e1')
+        e2 = tf.nn.relu(batch_norm(conv2d(e1, 128, kernel_height=3, kernel_width=3, stride_height=2, stride_width=2, stddev=0.02, name='g_e2_conv'), name='g_bn_e2'), name='g_ridge_e2')
+        e3 = tf.nn.relu(batch_norm(conv2d(e2, 128, kernel_height=3, kernel_width=3, stride_height=1, stride_width=1, stddev=0.02, name='g_e3_conv'), name='g_bn_e3'), name='g_ridge_e3')
+        e4 = tf.nn.relu(batch_norm(conv2d(e3, 256, kernel_height=3, kernel_width=3, stride_height=2, stride_width=2, stddev=0.02, name='g_e4_conv'), name='g_bn_e4'), name='g_ridge_e4')
+        e5 = tf.nn.relu(batch_norm(conv2d(e4, 256, kernel_height=3, kernel_width=3, stride_height=1, stride_width=1, stddev=0.02, name='g_e5_conv'), name='g_bn_e5'), name='g_ridge_e5')
+        e6 = tf.nn.relu(batch_norm(conv2d(e5, 256, kernel_height=3, kernel_width=3, stride_height=2, stride_width=2, stddev=0.02, name='g_e6_conv'), name='g_bn_e6'), name='g_ridge_e6')
+        e7 = tf.nn.tanh(conv2d(e6, 8, kernel_height=1, kernel_width=1, stride_height=1, stride_width=1, stddev=0.02, name='g_e7_conv'), name='g_ridge_e7')
+        
+        # binarization
+        self._ops.binary_representations.append(binarization(e7))
 
-            # decoder
-            d1 = conv2d(self._ops.binary_representations[-1], 256, kernel_height=3, kernel_width=3, stride_height=1, stride_width=1, stddev=0.02, name='g_d1_conv')
-            d2 = tf.nn.relu(batch_norm(conv2d(d1, 256, kernel_height=3, kernel_width=3, stride_height=1, stride_width=1, stddev=0.02, name='g_d2_conv'), name='g_bn_d2'), name='g_ridge_d2')
-            
-            d3 = deconv2d(d2, [self._config.batch_size, c_height*2, c_width*2, 256], kernel_height=2, kernel_width=2, stride_height=2, stride_width=2, stddev=0.02, name="g_d3_deconv")
-            if prev_convs[0] == 0:
-                prev_convs[0] = tf.zeros_like(d3)
-            d3_prev = tf.nn.relu(batch_norm(conv2d(prev_convs[0], 256, kernel_height=3, kernel_width=3, stride_height=1, stride_width=1, stddev=0.02, name='g_d3_conv_prev'), name='g_bn_d3_prev'), name='g_ridge_d3_prev')
-            d3_comb = tf.nn.tanh(d3 + d3_prev, name='g_ridge_d3') 
-            
-            d4 = tf.nn.relu(batch_norm(conv2d(d3_comb, 128, kernel_height=3, kernel_width=3, stride_height=1, stride_width=1, stddev=0.02, name='g_d4_conv'), name='g_bn_d4'), name='g_ridge_d4')
-            
-            d5 = deconv2d(d4, [self._config.batch_size, c_height*4, c_width*4, 128], kernel_height=2, kernel_width=2, stride_height=2, stride_width=2, stddev=0.02, name="g_d5_deconv")
-            if prev_convs[1] == 0:
-                prev_convs[1] = tf.zeros_like(d5)
-            d5_prev = tf.nn.relu(batch_norm(conv2d(prev_convs[1], 128, kernel_height=3, kernel_width=3, stride_height=1, stride_width=1, stddev=0.02, name='g_d5_conv_prev'), name='g_bn_d5_prev'), name='g_ridge_d5_prev')
-            d5_comb = tf.nn.tanh(d5 + d5_prev, , name='g_ridge_d5') 
-            
-            d6 = tf.nn.relu(batch_norm(conv2d(d5_comb, 64, kernel_height=3, kernel_width=3, stride_height=1, stride_width=1, stddev=0.02, name='g_d6_conv'), name='g_bn_d6'), name='g_ridge_d6')
+        # decoder
+        d1 = conv2d(self._ops.binary_representations[-1], 256, kernel_height=3, kernel_width=3, stride_height=1, stride_width=1, stddev=0.02, name='g_d1_conv')
+        d2 = tf.nn.relu(batch_norm(conv2d(d1, 256, kernel_height=3, kernel_width=3, stride_height=1, stride_width=1, stddev=0.02, name='g_d2_conv'), name='g_bn_d2'), name='g_ridge_d2')
+        
+        d3 = deconv2d(d2, [self._config.batch_size, c_height*2, c_width*2, 256], kernel_height=2, kernel_width=2, stride_height=2, stride_width=2, stddev=0.02, name="g_d3_deconv")
+        if prev_convs[0] == 0:
+            prev_convs[0] = tf.zeros_like(d3)
+        d3_prev = tf.nn.relu(batch_norm(conv2d(prev_convs[0], 256, kernel_height=3, kernel_width=3, stride_height=1, stride_width=1, stddev=0.02, name='g_d3_conv_prev'), name='g_bn_d3_prev'), name='g_ridge_d3_prev')
+        d3_comb = tf.nn.tanh(d3 + d3_prev, name='g_ridge_d3') 
+        
+        d4 = tf.nn.relu(batch_norm(conv2d(d3_comb, 128, kernel_height=3, kernel_width=3, stride_height=1, stride_width=1, stddev=0.02, name='g_d4_conv'), name='g_bn_d4'), name='g_ridge_d4')
+        
+        d5 = deconv2d(d4, [self._config.batch_size, c_height*4, c_width*4, 128], kernel_height=2, kernel_width=2, stride_height=2, stride_width=2, stddev=0.02, name="g_d5_deconv")
+        if prev_convs[1] == 0:
+            prev_convs[1] = tf.zeros_like(d5)
+        d5_prev = tf.nn.relu(batch_norm(conv2d(prev_convs[1], 128, kernel_height=3, kernel_width=3, stride_height=1, stride_width=1, stddev=0.02, name='g_d5_conv_prev'), name='g_bn_d5_prev'), name='g_ridge_d5_prev')
+        d5_comb = tf.nn.tanh(d5 + d5_prev, name='g_ridge_d5') 
+        
+        d6 = tf.nn.relu(batch_norm(conv2d(d5_comb, 64, kernel_height=3, kernel_width=3, stride_height=1, stride_width=1, stddev=0.02, name='g_d6_conv'), name='g_bn_d6'), name='g_ridge_d6')
 
-            d7 = deconv2d(d6, [self._config.batch_size, c_height*8, c_width*8, 64], kernel_height=2, kernel_width=2, stride_height=2, stride_width=2, stddev=0.02, name="g_d7_deconv")
-            if prev_convs[2] == 0:
-                prev_convs[2] = tf.zeros_like(d7)
-            d7_prev = tf.nn.relu(batch_norm(conv2d(prev_convs[2], 64, kernel_height=3, kernel_width=3, stride_height=1, stride_width=1, stddev=0.02, name='g_d7_conv_prev'), name='g_bn_d7_prev'), , name='g_ridge_d7_prev')
-            d7_comb = tf.nn.tanh(d7 + d7_prev, , name='g_ridge_d7')  
-            
-            pred = tf.nn.tanh(conv2d(d7_comb, channels, kernel_height=3, kernel_width=3, stride_height=1, stride_width=1, stddev=0.02, name='g_d8_conv'), name='g_ridge_d8')
-    
-            convs = [d3, d5, d7]
-    
-            return pred, convs
+        d7 = deconv2d(d6, [self._config.batch_size, c_height*8, c_width*8, 64], kernel_height=2, kernel_width=2, stride_height=2, stride_width=2, stddev=0.02, name="g_d7_deconv")
+        if prev_convs[2] == 0:
+            prev_convs[2] = tf.zeros_like(d7)
+        d7_prev = tf.nn.relu(batch_norm(conv2d(prev_convs[2], 64, kernel_height=3, kernel_width=3, stride_height=1, stride_width=1, stddev=0.02, name='g_d7_conv_prev'), name='g_bn_d7_prev'), name='g_ridge_d7_prev')
+        d7_comb = tf.nn.tanh(d7 + d7_prev, name='g_ridge_d7')  
+        
+        pred = tf.nn.tanh(conv2d(d7_comb, channels, kernel_height=3, kernel_width=3, stride_height=1, stride_width=1, stddev=0.02, name='g_d8_conv'), name='g_ridge_d8')
+
+        convs = [d3, d5, d7]
+
+        return pred, convs
         
         
     def _generator_R2I_full(self, image):
-        with tf.variable_scope("generator") as scope:
-            stage_preds = []
-            current_prediction = 0
-            current_conv_links = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
-            current_residual = image
-            for s in range(self._config.stages + 1)[1:]:
-                with tf.variable_scope("stage_" + str(s)):
-                    current_prediction, current_conv_links = self._R2I_full_stage(current_residual, current_conv_links, name="stage_" + str(s))
-                    current_residual = image - current_prediction
-                    stage_preds.append(current_prediction)
+        stage_preds = []
+        current_prediction = 0
+        current_conv_links = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+        current_residual = image
+        for s in range(self._config.stages + 1)[1:]:
+            with tf.variable_scope("stage_" + str(s)):
+                current_prediction, current_conv_links = self._R2I_full_stage(current_residual, current_conv_links)
+                current_residual = image - current_prediction
+                stage_preds.append(current_prediction)
+        
+        # compute bpp
+        bin_dim = 1
+        for dim in self._ops.binary_representations[0].get_shape().as_list()[1:]:
+            bin_dim *= dim
+        self._code_bits = (bin_dim * self._config.stages)
             
-            # compute bpp
-            bin_dim = 1
-            for dim in self._ops.binary_representations[0].get_shape().as_list()[1:]:
-                bin_dim *= dim
-            self._code_bits = (bin_dim * self._config.stages)
-                
-            return stage_preds
+        return stage_preds
    
-    def _R2I_full_stage(self, res_in, prev_convs, name="stage"):
-        with tf.variable_scope(name):
+   
+    def _R2I_full_stage(self, res_in, prev_convs):
 
-            batchsize, height, width, channels = res_in.get_shape().as_list()
-            c_height = int(height / 8)
-            c_width = int(width / 8)
-            
-            # encoder
-            e1 = tf.nn.relu(batch_norm(conv2d(res_in, 64, kernel_height=3, kernel_width=3, stride_height=1, stride_width=1, stddev=0.02, name='g_e1_conv'), name='g_bn_e1'))
-            if prev_convs[0] == 0:
-                prev_convs[0] = tf.zeros_like(e1)
-            e1_prev = tf.nn.relu(batch_norm(conv2d(prev_convs[0], 64, kernel_height=3, kernel_width=3, stride_height=1, stride_width=1, stddev=0.02, name='g_e1_prev_conv'), name='g_bn_e1_prev'))
-            e1_comb = tf.nn.tanh(e1 + e1_prev)
-            
-            e2 = tf.nn.relu(batch_norm(conv2d(e1_comb, 128, kernel_height=3, kernel_width=3, stride_height=2, stride_width=2, stddev=0.02, name='g_e2_conv'), name='g_bn_e2'))
-            if prev_convs[1] == 0:
-                prev_convs[1] = tf.zeros_like(e2)
-            e2_prev = tf.nn.relu(batch_norm(conv2d(prev_convs[1], 128, kernel_height=3, kernel_width=3, stride_height=1, stride_width=1, stddev=0.02, name='g_e2_prev_conv'), name='g_bn_e2_prev'))
-            e2_comb = tf.nn.tanh(e2 + e2_prev)
+        batchsize, height, width, channels = res_in.get_shape().as_list()
+        c_height = int(height / 8)
+        c_width = int(width / 8)
+        
+        # encoder
+        e1 = tf.nn.relu(batch_norm(conv2d(res_in, 64, kernel_height=3, kernel_width=3, stride_height=1, stride_width=1, stddev=0.02, name='g_e1_conv'), name='g_bn_e1'))
+        if prev_convs[0] == 0:
+            prev_convs[0] = tf.zeros_like(e1)
+        e1_prev = tf.nn.relu(batch_norm(conv2d(prev_convs[0], 64, kernel_height=3, kernel_width=3, stride_height=1, stride_width=1, stddev=0.02, name='g_e1_prev_conv'), name='g_bn_e1_prev'))
+        e1_comb = tf.nn.tanh(e1 + e1_prev)
+        
+        e2 = tf.nn.relu(batch_norm(conv2d(e1_comb, 128, kernel_height=3, kernel_width=3, stride_height=2, stride_width=2, stddev=0.02, name='g_e2_conv'), name='g_bn_e2'))
+        if prev_convs[1] == 0:
+            prev_convs[1] = tf.zeros_like(e2)
+        e2_prev = tf.nn.relu(batch_norm(conv2d(prev_convs[1], 128, kernel_height=3, kernel_width=3, stride_height=1, stride_width=1, stddev=0.02, name='g_e2_prev_conv'), name='g_bn_e2_prev'))
+        e2_comb = tf.nn.tanh(e2 + e2_prev)
 
-            e3 = tf.nn.relu(batch_norm(conv2d(e2_comb, 128, kernel_height=3, kernel_width=3, stride_height=1, stride_width=1, stddev=0.02, name='g_e3_conv'), name='g_bn_e3'))
-            if prev_convs[2] == 0:
-                prev_convs[2] = tf.zeros_like(e3)
-            e3_prev = tf.nn.relu(batch_norm(conv2d(prev_convs[2], 128, kernel_height=3, kernel_width=3, stride_height=1, stride_width=1, stddev=0.02, name='g_e3_prev_conv'), name='g_bn_e3_prev'))
-            e3_comb = tf.nn.tanh(e3 + e3_prev)         
-            
-            e4 = tf.nn.relu(batch_norm(conv2d(e3_comb, 256, kernel_height=3, kernel_width=3, stride_height=2, stride_width=2, stddev=0.02, name='g_e4_conv'), name='g_bn_e4'))
-            if prev_convs[3] == 0:
-                prev_convs[3] = tf.zeros_like(e4)
-            e4_prev = tf.nn.relu(batch_norm(conv2d(prev_convs[3], 256, kernel_height=3, kernel_width=3, stride_height=1, stride_width=1, stddev=0.02, name='g_e4_prev_conv'), name='g_bn_e4_prev'))
-            e4_comb = tf.nn.tanh(e4 + e4_prev)              
-            
-            e5 = tf.nn.relu(batch_norm(conv2d(e4_comb, 256, kernel_height=3, kernel_width=3, stride_height=1, stride_width=1, stddev=0.02, name='g_e5_conv'), name='g_bn_e5'))
-            if prev_convs[4] == 0:
-                prev_convs[4] = tf.zeros_like(e5)
-            e5_prev = tf.nn.relu(batch_norm(conv2d(prev_convs[4], 256, kernel_height=3, kernel_width=3, stride_height=1, stride_width=1, stddev=0.02, name='g_e5_prev_conv'), name='g_bn_e5_prev'))
-            e5_comb = tf.nn.tanh(e5 + e5_prev)   
-            
-            e6 = tf.nn.relu(batch_norm(conv2d(e5_comb, 256, kernel_height=3, kernel_width=3, stride_height=2, stride_width=2, stddev=0.02, name='g_e6_conv'), name='g_bn_e6'))
-            if prev_convs[5] == 0:
-                prev_convs[5] = tf.zeros_like(e6)
-            e6_prev = tf.nn.relu(batch_norm(conv2d(prev_convs[5], 256, kernel_height=3, kernel_width=3, stride_height=1, stride_width=1, stddev=0.02, name='g_e6_prev_conv'), name='g_bn_e6_prev'))
-            e6_comb = tf.nn.tanh(e6 + e6_prev) 
-            
-            e7 = tf.nn.tanh(conv2d(e6_comb, 8, kernel_height=1, kernel_width=1, stride_height=1, stride_width=1, stddev=0.02, name='g_e7_conv'))
-            
-            # binarization
-            self._ops.binary_representations.append(binarization(e7))
+        e3 = tf.nn.relu(batch_norm(conv2d(e2_comb, 128, kernel_height=3, kernel_width=3, stride_height=1, stride_width=1, stddev=0.02, name='g_e3_conv'), name='g_bn_e3'))
+        if prev_convs[2] == 0:
+            prev_convs[2] = tf.zeros_like(e3)
+        e3_prev = tf.nn.relu(batch_norm(conv2d(prev_convs[2], 128, kernel_height=3, kernel_width=3, stride_height=1, stride_width=1, stddev=0.02, name='g_e3_prev_conv'), name='g_bn_e3_prev'))
+        e3_comb = tf.nn.tanh(e3 + e3_prev)         
+        
+        e4 = tf.nn.relu(batch_norm(conv2d(e3_comb, 256, kernel_height=3, kernel_width=3, stride_height=2, stride_width=2, stddev=0.02, name='g_e4_conv'), name='g_bn_e4'))
+        if prev_convs[3] == 0:
+            prev_convs[3] = tf.zeros_like(e4)
+        e4_prev = tf.nn.relu(batch_norm(conv2d(prev_convs[3], 256, kernel_height=3, kernel_width=3, stride_height=1, stride_width=1, stddev=0.02, name='g_e4_prev_conv'), name='g_bn_e4_prev'))
+        e4_comb = tf.nn.tanh(e4 + e4_prev)              
+        
+        e5 = tf.nn.relu(batch_norm(conv2d(e4_comb, 256, kernel_height=3, kernel_width=3, stride_height=1, stride_width=1, stddev=0.02, name='g_e5_conv'), name='g_bn_e5'))
+        if prev_convs[4] == 0:
+            prev_convs[4] = tf.zeros_like(e5)
+        e5_prev = tf.nn.relu(batch_norm(conv2d(prev_convs[4], 256, kernel_height=3, kernel_width=3, stride_height=1, stride_width=1, stddev=0.02, name='g_e5_prev_conv'), name='g_bn_e5_prev'))
+        e5_comb = tf.nn.tanh(e5 + e5_prev)   
+        
+        e6 = tf.nn.relu(batch_norm(conv2d(e5_comb, 256, kernel_height=3, kernel_width=3, stride_height=2, stride_width=2, stddev=0.02, name='g_e6_conv'), name='g_bn_e6'))
+        if prev_convs[5] == 0:
+            prev_convs[5] = tf.zeros_like(e6)
+        e6_prev = tf.nn.relu(batch_norm(conv2d(prev_convs[5], 256, kernel_height=3, kernel_width=3, stride_height=1, stride_width=1, stddev=0.02, name='g_e6_prev_conv'), name='g_bn_e6_prev'))
+        e6_comb = tf.nn.tanh(e6 + e6_prev) 
+        
+        e7 = tf.nn.tanh(conv2d(e6_comb, 8, kernel_height=1, kernel_width=1, stride_height=1, stride_width=1, stddev=0.02, name='g_e7_conv'))
+        
+        # binarization
+        self._ops.binary_representations.append(binarization(e7))
 
-            # decoder
-            d1 = conv2d(self._ops.binary_representations[-1], 256, kernel_height=3, kernel_width=3, stride_height=1, stride_width=1, stddev=0.02, name='g_d1_conv')
-            d2 = tf.nn.relu(batch_norm(conv2d(d1, 256, kernel_height=3, kernel_width=3, stride_height=1, stride_width=1, stddev=0.02, name='g_d2_conv'), name='g_bn_d2'))
-            if prev_convs[6] == 0:
-                prev_convs[6] = tf.zeros_like(d2)
-            d2_prev = tf.nn.relu(batch_norm(conv2d(prev_convs[6], 256, kernel_height=3, kernel_width=3, stride_height=1, stride_width=1, stddev=0.02, name='g_d2_conv_prev'), name='g_bn_d2_prev'))
-            d2_comb = tf.nn.tanh(d2 + d2_prev) 
-            
-            d3 = deconv2d(d2_comb, [self._config.batch_size, c_height*2, c_width*2, 256], kernel_height=2, kernel_width=2, stride_height=2, stride_width=2, stddev=0.02, name="g_d3_deconv")
-            if prev_convs[7] == 0:
-                prev_convs[7] = tf.zeros_like(d3)
-            d3_prev = tf.nn.relu(batch_norm(conv2d(prev_convs[7], 256, kernel_height=3, kernel_width=3, stride_height=1, stride_width=1, stddev=0.02, name='g_d3_conv_prev'), name='g_bn_d3_prev'))
-            d3_comb = tf.nn.tanh(d3 + d3_prev) 
-            
-            d4 = tf.nn.relu(batch_norm(conv2d(d3_comb, 128, kernel_height=3, kernel_width=3, stride_height=1, stride_width=1, stddev=0.02, name='g_d4_conv'), name='g_bn_d4'))
-            if prev_convs[8] == 0:
-                prev_convs[8] = tf.zeros_like(d4)
-            d4_prev = tf.nn.relu(batch_norm(conv2d(prev_convs[8], 128, kernel_height=3, kernel_width=3, stride_height=1, stride_width=1, stddev=0.02, name='g_d4_conv_prev'), name='g_bn_d4_prev'))
-            d4_comb = tf.nn.tanh(d4 + d4_prev) 
-            
-            d5 = deconv2d(d4_comb, [self._config.batch_size, c_height*4, c_width*4, 128], kernel_height=2, kernel_width=2, stride_height=2, stride_width=2, stddev=0.02, name="g_d5_deconv")
-            if prev_convs[9] == 0:
-                prev_convs[9] = tf.zeros_like(d5)
-            d5_prev = tf.nn.relu(batch_norm(conv2d(prev_convs[9], 128, kernel_height=3, kernel_width=3, stride_height=1, stride_width=1, stddev=0.02, name='g_d5_conv_prev'), name='g_bn_d5_prev'))
-            d5_comb = tf.nn.tanh(d5 + d5_prev) 
-            
-            d6 = tf.nn.relu(batch_norm(conv2d(d5_comb, 64, kernel_height=3, kernel_width=3, stride_height=1, stride_width=1, stddev=0.02, name='g_d6_conv'), name='g_bn_d6'))
-            if prev_convs[10] == 0:
-                prev_convs[10] = tf.zeros_like(d6)
-            d6_prev = tf.nn.relu(batch_norm(conv2d(prev_convs[10], 64, kernel_height=3, kernel_width=3, stride_height=1, stride_width=1, stddev=0.02, name='g_d6_conv_prev'), name='g_bn_d6_prev'))
-            d6_comb = tf.nn.tanh(d6 + d6_prev)             
+        # decoder
+        d1 = conv2d(self._ops.binary_representations[-1], 256, kernel_height=3, kernel_width=3, stride_height=1, stride_width=1, stddev=0.02, name='g_d1_conv')
+        d2 = tf.nn.relu(batch_norm(conv2d(d1, 256, kernel_height=3, kernel_width=3, stride_height=1, stride_width=1, stddev=0.02, name='g_d2_conv'), name='g_bn_d2'))
+        if prev_convs[6] == 0:
+            prev_convs[6] = tf.zeros_like(d2)
+        d2_prev = tf.nn.relu(batch_norm(conv2d(prev_convs[6], 256, kernel_height=3, kernel_width=3, stride_height=1, stride_width=1, stddev=0.02, name='g_d2_conv_prev'), name='g_bn_d2_prev'))
+        d2_comb = tf.nn.tanh(d2 + d2_prev) 
+        
+        d3 = deconv2d(d2_comb, [self._config.batch_size, c_height*2, c_width*2, 256], kernel_height=2, kernel_width=2, stride_height=2, stride_width=2, stddev=0.02, name="g_d3_deconv")
+        if prev_convs[7] == 0:
+            prev_convs[7] = tf.zeros_like(d3)
+        d3_prev = tf.nn.relu(batch_norm(conv2d(prev_convs[7], 256, kernel_height=3, kernel_width=3, stride_height=1, stride_width=1, stddev=0.02, name='g_d3_conv_prev'), name='g_bn_d3_prev'))
+        d3_comb = tf.nn.tanh(d3 + d3_prev) 
+        
+        d4 = tf.nn.relu(batch_norm(conv2d(d3_comb, 128, kernel_height=3, kernel_width=3, stride_height=1, stride_width=1, stddev=0.02, name='g_d4_conv'), name='g_bn_d4'))
+        if prev_convs[8] == 0:
+            prev_convs[8] = tf.zeros_like(d4)
+        d4_prev = tf.nn.relu(batch_norm(conv2d(prev_convs[8], 128, kernel_height=3, kernel_width=3, stride_height=1, stride_width=1, stddev=0.02, name='g_d4_conv_prev'), name='g_bn_d4_prev'))
+        d4_comb = tf.nn.tanh(d4 + d4_prev) 
+        
+        d5 = deconv2d(d4_comb, [self._config.batch_size, c_height*4, c_width*4, 128], kernel_height=2, kernel_width=2, stride_height=2, stride_width=2, stddev=0.02, name="g_d5_deconv")
+        if prev_convs[9] == 0:
+            prev_convs[9] = tf.zeros_like(d5)
+        d5_prev = tf.nn.relu(batch_norm(conv2d(prev_convs[9], 128, kernel_height=3, kernel_width=3, stride_height=1, stride_width=1, stddev=0.02, name='g_d5_conv_prev'), name='g_bn_d5_prev'))
+        d5_comb = tf.nn.tanh(d5 + d5_prev) 
+        
+        d6 = tf.nn.relu(batch_norm(conv2d(d5_comb, 64, kernel_height=3, kernel_width=3, stride_height=1, stride_width=1, stddev=0.02, name='g_d6_conv'), name='g_bn_d6'))
+        if prev_convs[10] == 0:
+            prev_convs[10] = tf.zeros_like(d6)
+        d6_prev = tf.nn.relu(batch_norm(conv2d(prev_convs[10], 64, kernel_height=3, kernel_width=3, stride_height=1, stride_width=1, stddev=0.02, name='g_d6_conv_prev'), name='g_bn_d6_prev'))
+        d6_comb = tf.nn.tanh(d6 + d6_prev)             
 
-            d7 = deconv2d(d6_comb, [self._config.batch_size, c_height*8, c_width*8, 64], kernel_height=2, kernel_width=2, stride_height=2, stride_width=2, stddev=0.02, name="g_d7_deconv")
-            if prev_convs[11] == 0:
-                prev_convs[11] = tf.zeros_like(d7)
-            d7_prev = tf.nn.relu(batch_norm(conv2d(prev_convs[11], 64, kernel_height=3, kernel_width=3, stride_height=1, stride_width=1, stddev=0.02, name='g_d7_conv_prev'), name='g_bn_d7_prev'))
-            d7_comb = tf.nn.tanh(d7 + d7_prev)  
-            
-            pred = tf.nn.tanh(conv2d(d7_comb, channels, kernel_height=3, kernel_width=3, stride_height=1, stride_width=1, stddev=0.02, name='g_d8_conv'))
-    
-            convs = [e1, e2, e3, e4, e5, e6, d2, d3, d4, d5, d6, d7]
-    
-            return pred, convs
+        d7 = deconv2d(d6_comb, [self._config.batch_size, c_height*8, c_width*8, 64], kernel_height=2, kernel_width=2, stride_height=2, stride_width=2, stddev=0.02, name="g_d7_deconv")
+        if prev_convs[11] == 0:
+            prev_convs[11] = tf.zeros_like(d7)
+        d7_prev = tf.nn.relu(batch_norm(conv2d(prev_convs[11], 64, kernel_height=3, kernel_width=3, stride_height=1, stride_width=1, stddev=0.02, name='g_d7_conv_prev'), name='g_bn_d7_prev'))
+        d7_comb = tf.nn.tanh(d7 + d7_prev)  
+        
+        pred = tf.nn.tanh(conv2d(d7_comb, channels, kernel_height=3, kernel_width=3, stride_height=1, stride_width=1, stddev=0.02, name='g_d8_conv'))
+
+        convs = [e1, e2, e3, e4, e5, e6, d2, d3, d4, d5, d6, d7]
+
+        return pred, convs
             
 
     def _generator_R2I_predconn(self, image):
-        with tf.variable_scope("generator") as scope:
-            stage_preds = []
-            current_d8 = 0
-            current_residual = image
-            for s in range(self._config.stages + 1)[1:]:
-                with tf.variable_scope("stage_" + str(s)):
-                    current_prediction, next_d8 = self._R2I_predconn_stage(current_residual, current_d8, name="s_" + str(s))
-                    current_d8 += next_d8
-                    current_residual = image - current_prediction
-                    stage_preds.append(current_prediction)
+        stage_preds = []
+        current_d8 = 0
+        current_residual = image
+        for s in range(self._config.stages + 1)[1:]:
+            with tf.variable_scope("stage_" + str(s)):
+                current_prediction, next_d8 = self._R2I_predconn_stage(current_residual, current_d8)
+                current_d8 += next_d8
+                current_residual = image - current_prediction
+                stage_preds.append(current_prediction)
+        
+        # compute bpp
+        bin_dim = 1
+        for dim in self._ops.binary_representations[0].get_shape().as_list()[1:]:
+            bin_dim *= dim
+        self._code_bits = (bin_dim * self._config.stages)
             
-            # compute bpp
-            bin_dim = 1
-            for dim in self._ops.binary_representations[0].get_shape().as_list()[1:]:
-                bin_dim *= dim
-            self._code_bits = (bin_dim * self._config.stages)
-                
-            return stage_preds
+        return stage_preds
             
-    def _R2I_predconn_stage(self, res_in, prev_d8, name="stage"):
-        with tf.variable_scope(name):
+    def _R2I_predconn_stage(self, res_in, prev_d8):
 
-            batchsize, height, width, channels = res_in.get_shape().as_list()
-            c_height = int(height / 8)
-            c_width = int(width / 8)
-            
-            # encoder
-            e1 = tf.nn.relu(batch_norm(conv2d(res_in, 64, kernel_height=3, kernel_width=3, stride_height=1, stride_width=1, stddev=0.02, name='g_e1_conv'), name='g_bn_e1'))
-            e2 = tf.nn.relu(batch_norm(conv2d(e1, 128, kernel_height=3, kernel_width=3, stride_height=2, stride_width=2, stddev=0.02, name='g_e2_conv'), name='g_bn_e2'))
-            e3 = tf.nn.relu(batch_norm(conv2d(e2, 128, kernel_height=3, kernel_width=3, stride_height=1, stride_width=1, stddev=0.02, name='g_e3_conv'), name='g_bn_e3'))
-            e4 = tf.nn.relu(batch_norm(conv2d(e3, 256, kernel_height=3, kernel_width=3, stride_height=2, stride_width=2, stddev=0.02, name='g_e4_conv'), name='g_bn_e4'))
-            e5 = tf.nn.relu(batch_norm(conv2d(e4, 256, kernel_height=3, kernel_width=3, stride_height=1, stride_width=1, stddev=0.02, name='g_e5_conv'), name='g_bn_e5'))
-            e6 = tf.nn.relu(batch_norm(conv2d(e5, 256, kernel_height=3, kernel_width=3, stride_height=2, stride_width=2, stddev=0.02, name='g_e6_conv'), name='g_bn_e6'))
-            e7 = tf.nn.tanh(conv2d(e6, 8, kernel_height=1, kernel_width=1, stride_height=1, stride_width=1, stddev=0.02, name='g_e7_conv'))
-            
-            # binarization
-            self._ops.binary_representations.append(binarization(e7))
+        batchsize, height, width, channels = res_in.get_shape().as_list()
+        c_height = int(height / 8)
+        c_width = int(width / 8)
+        
+        # encoder
+        e1 = tf.nn.relu(batch_norm(conv2d(res_in, 64, kernel_height=3, kernel_width=3, stride_height=1, stride_width=1, stddev=0.02, name='g_e1_conv'), name='g_bn_e1'), name='g_ridge_e1')
+        e2 = tf.nn.relu(batch_norm(conv2d(e1, 128, kernel_height=3, kernel_width=3, stride_height=2, stride_width=2, stddev=0.02, name='g_e2_conv'), name='g_bn_e2'), name='g_ridge_e2')
+        e3 = tf.nn.relu(batch_norm(conv2d(e2, 128, kernel_height=3, kernel_width=3, stride_height=1, stride_width=1, stddev=0.02, name='g_e3_conv'), name='g_bn_e3'), name='g_ridge_e3')
+        e4 = tf.nn.relu(batch_norm(conv2d(e3, 256, kernel_height=3, kernel_width=3, stride_height=2, stride_width=2, stddev=0.02, name='g_e4_conv'), name='g_bn_e4'), name='g_ridge_e4')
+        e5 = tf.nn.relu(batch_norm(conv2d(e4, 256, kernel_height=3, kernel_width=3, stride_height=1, stride_width=1, stddev=0.02, name='g_e5_conv'), name='g_bn_e5'), name='g_ridge_e5')
+        e6 = tf.nn.relu(batch_norm(conv2d(e5, 256, kernel_height=3, kernel_width=3, stride_height=2, stride_width=2, stddev=0.02, name='g_e6_conv'), name='g_bn_e6'), name='g_ridge_e6')
+        e7 = tf.nn.tanh(conv2d(e6, 8, kernel_height=1, kernel_width=1, stride_height=1, stride_width=1, stddev=0.02, name='g_e7_conv'), name='g_ridge_e7')
+        
+        # binarization
+        self._ops.binary_representations.append(binarization(e7))
 
-            # decoder
-            d1 = conv2d(self._ops.binary_representations[-1], 256, kernel_height=3, kernel_width=3, stride_height=1, stride_width=1, stddev=0.02, name='g_d1_conv')
-            d2 = tf.nn.relu(batch_norm(conv2d(d1, 256, kernel_height=3, kernel_width=3, stride_height=1, stride_width=1, stddev=0.02, name='g_d2_conv'), name='g_bn_d2'))
-            d3 = deconv2d(d2, [self._config.batch_size, c_height*2, c_width*2, 256], kernel_height=2, kernel_width=2, stride_height=2, stride_width=2, stddev=0.02, name="g_d3_deconv")
-            d4 = tf.nn.relu(batch_norm(conv2d(d3, 128, kernel_height=3, kernel_width=3, stride_height=1, stride_width=1, stddev=0.02, name='g_d4_conv'), name='g_bn_d4'))
-            d5 = deconv2d(d4, [self._config.batch_size, c_height*4, c_width*4, 128], kernel_height=2, kernel_width=2, stride_height=2, stride_width=2, stddev=0.02, name="g_d5_deconv")
-            d6 = tf.nn.relu(batch_norm(conv2d(d5, 64, kernel_height=3, kernel_width=3, stride_height=1, stride_width=1, stddev=0.02, name='g_d6_conv'), name='g_bn_d6'))
-            d7 = deconv2d(d6, [self._config.batch_size, c_height*8, c_width*8, 64], kernel_height=2, kernel_width=2, stride_height=2, stride_width=2, stddev=0.02, name="g_d7_deconv")
-            d8 = conv2d(d7, channels, kernel_height=3, kernel_width=3, stride_height=1, stride_width=1, stddev=0.02, name='g_d8_conv')
+        # decoder
+        d1 = conv2d(self._ops.binary_representations[-1], 256, kernel_height=3, kernel_width=3, stride_height=1, stride_width=1, stddev=0.02, name='g_d1_conv')
+        d2 = tf.nn.relu(batch_norm(conv2d(d1, 256, kernel_height=3, kernel_width=3, stride_height=1, stride_width=1, stddev=0.02, name='g_d2_conv'), name='g_bn_d2'), name='g_ridge_d2')
+        d3 = deconv2d(d2, [self._config.batch_size, c_height*2, c_width*2, 256], kernel_height=2, kernel_width=2, stride_height=2, stride_width=2, stddev=0.02, name="g_d3_deconv")
+        d4 = tf.nn.relu(batch_norm(conv2d(d3, 128, kernel_height=3, kernel_width=3, stride_height=1, stride_width=1, stddev=0.02, name='g_d4_conv'), name='g_bn_d4'), name='g_ridge_d4)
+        d5 = deconv2d(d4, [self._config.batch_size, c_height*4, c_width*4, 128], kernel_height=2, kernel_width=2, stride_height=2, stride_width=2, stddev=0.02, name="g_d5_deconv")
+        d6 = tf.nn.relu(batch_norm(conv2d(d5, 64, kernel_height=3, kernel_width=3, stride_height=1, stride_width=1, stddev=0.02, name='g_d6_conv'), name='g_bn_d6'), name='g_ridge_d6)
+        d7 = deconv2d(d6, [self._config.batch_size, c_height*8, c_width*8, 64], kernel_height=2, kernel_width=2, stride_height=2, stride_width=2, stddev=0.02, name="g_d7_deconv")
+        d8 = conv2d(d7, channels, kernel_height=3, kernel_width=3, stride_height=1, stride_width=1, stddev=0.02, name='g_d8_conv')
+        
+        pred = tf.nn.tanh(d8 + prev_d8, name='g_ridge_pred)
+
+        return pred, d8
             
-            pred = tf.nn.tanh(d8 + prev_d8)
-    
-            return pred, d8
-            
-            
+'''         
     def _generator_R2R(self, image):
         with tf.variable_scope("generator") as scope:
             
@@ -721,7 +725,7 @@ class Res2pix(object):
                 print("Stage: Shape of d8 = " + str(d8.get_shape()))
     
             return d8
-        
+'''     
             
 '''
     def _generator_pix2pix(self, image):
