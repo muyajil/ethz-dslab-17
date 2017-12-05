@@ -307,13 +307,13 @@ class Res2pix(object):
 
         with tf.variable_scope("loss"):
             # loss and metrics functions
-            with tf.variable_scope("GAN loss"):
+            with tf.variable_scope("GAN_loss"):
                 self._ops.dis_loss_real = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(logits=dis_logits_real, labels=tf.ones_like(dis_out_real)))
                 self._ops.dis_loss_fake = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(logits=dis_logits_fake, labels=tf.zeros_like(dis_out_fake)))
                 self._ops.dis_loss = self._ops.dis_loss_real + self._ops.dis_loss_fake
                 self._ops.gen_loss_adv = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(logits=dis_logits_fake, labels=tf.ones_like(dis_out_fake)))       
             
-            with tf.variable_scope("reconstruction loss"):
+            with tf.variable_scope("reconstruction_loss"):
                 # res2pix loss
                 # --------------
                 loss = 0
@@ -379,17 +379,17 @@ class Res2pix(object):
         dis_vars = [var for var in train_vars if 'd_' in var.name]
         gen_vars = [var for var in train_vars if 'g_' in var.name]
 
-        with tf.variable_scope("GAN optimizer discriminator"):
+        with tf.variable_scope("GAN_optimizer_discriminator"):
             dis_opti = tf.train.AdamOptimizer(self._config.learning_rate, beta1=self._config.adam_beta1)
             dis_grads_and_vars = dis_opti.compute_gradients(self._ops.dis_loss, var_list=dis_vars)
             self._ops.dis_optimizer = dis_opti.apply_gradients(dis_grads_and_vars)
         
-        with tf.variable_scope("GAN optimizer generator"):
+        with tf.variable_scope("GAN_optimizer_generator"):
             gen_opti = tf.train.AdamOptimizer(self._config.learning_rate, beta1=self._config.adam_beta1)
             gen_grads_and_vars = gen_opti.compute_gradients(self._ops.gen_loss, var_list=gen_vars)
             self._ops.gen_optimizer = gen_opti.apply_gradients(gen_grads_and_vars)
         
-        with tf.variable_scope("reconstruction optimizer generator"):
+        with tf.variable_scope("reconstruction_optimizer_generator"):
             gen_reconstr_opti = tf.train.AdamOptimizer(self._config.learning_rate, beta1=self._config.adam_beta1)
             gen_reconstr_grads_and_vars = gen_reconstr_opti.compute_gradients(self._ops.gen_loss_reconstr, var_list=gen_vars)
             self._ops.gen_reconstr_optimizer = gen_reconstr_opti.apply_gradients(gen_reconstr_grads_and_vars)
@@ -405,7 +405,7 @@ class Res2pix(object):
 
 
     def _discriminator(self, image, reuse=False):
-        with tf.variable_scope("discriminator instance") as scope:
+        with tf.variable_scope("discriminator_instance") as scope:
             if reuse:
                 tf.get_variable_scope().reuse_variables()
             else:
