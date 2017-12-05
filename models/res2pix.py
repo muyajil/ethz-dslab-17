@@ -418,9 +418,10 @@ class Res2pix(object):
             
             current_residual = image
             for s in range(self._config.stages + 1)[1:]:
-                current_prediction, current_conv_links = self._R2I_decode_stage(current_residual, current_conv_links, name="stage_" + str(s))
-                current_residual = image - current_prediction
-                stage_preds.append(current_prediction)
+                with tf.variable_scope("stage_" + str(s)):
+                    current_prediction, current_conv_links = self._R2I_decode_stage(current_residual, current_conv_links, name="stage_" + str(s))
+                    current_residual = image - current_prediction
+                    stage_preds.append(current_prediction)
             
             # compute bpp
             bin_dim = 1
@@ -489,9 +490,10 @@ class Res2pix(object):
             current_conv_links = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
             current_residual = image
             for s in range(self._config.stages + 1)[1:]:
-                current_prediction, current_conv_links = self._R2I_full_stage(current_residual, current_conv_links, name="stage_" + str(s))
-                current_residual = image - current_prediction
-                stage_preds.append(current_prediction)
+                with tf.variable_scope("stage_" + str(s)):
+                    current_prediction, current_conv_links = self._R2I_full_stage(current_residual, current_conv_links, name="stage_" + str(s))
+                    current_residual = image - current_prediction
+                    stage_preds.append(current_prediction)
             
             # compute bpp
             bin_dim = 1
