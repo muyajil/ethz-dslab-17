@@ -283,8 +283,8 @@ class Res2pix(object):
                                                             self._config.input_dimensions.depth])
                                                             
         # architecture
-        # self._ops.gen_preds = self._generator_R2I_decode(self._ops.in_img)
-        self._ops.gen_preds = self._generator_R2I_full(self._ops.in_img)
+        self._ops.gen_preds = self._generator_R2I_decode(self._ops.in_img)
+        # self._ops.gen_preds = self._generator_R2I_full(self._ops.in_img)
         # self._ops.gen_preds = self._generator_R2I_predconn(self._ops.in_img)
         # gen_res_preds, gen_residuals = self._generator_res2res(self._ops.in_img)
         
