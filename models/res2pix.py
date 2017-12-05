@@ -284,7 +284,8 @@ class Res2pix(object):
                                                             
         # architecture
         # self._ops.gen_preds = self._generator_R2I_decode(self._ops.in_img)
-        self._ops.gen_preds = self._generator_R2I_predconn(self._ops.in_img)
+        self._ops.gen_preds = self._generator_R2I_full(self._ops.in_img)
+        # self._ops.gen_preds = self._generator_R2I_predconn(self._ops.in_img)
         # gen_res_preds, gen_residuals = self._generator_res2res(self._ops.in_img)
         
         # res2pix output
@@ -486,7 +487,6 @@ class Res2pix(object):
             stage_preds = []
             current_prediction = 0
             current_conv_links = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
-            
             current_residual = image
             for s in range(self._config.stages + 1)[1:]:
                 current_prediction, current_conv_links = self._R2I_full_stage(current_residual, current_conv_links, name="stage_" + str(s))
