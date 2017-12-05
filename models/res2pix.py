@@ -365,7 +365,7 @@ class Res2pix(object):
         bitmaps_c = tf.expand_dims(tf.concat(bitmaps, 1), -1)
         residuals_c = tf.concat(residuals, 1)
         
-        self._ops.img_summary = tf.summary.image("val_img_summary", tf.concat([images_c, bitmaps_c,  residuals_c], 2))
+        self._ops.img_summary = tf.summary.image("val_img_summary", tf.concat([images_c, bitmaps_c,  residuals_c], 2), max_outputs=6)
 
         # trainable variables and optimizers
         train_vars = tf.trainable_variables()
