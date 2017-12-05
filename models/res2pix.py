@@ -270,12 +270,18 @@ class Res2pix(object):
             for j in range(self._config.stages):
                 psnrs_stage = []
                 mssims_stage = []
+                if self._config.debug:
+                    print(" stage" + str(j) + "_batch_avg_psnr..")
                 for i in range(self._config.batch_size):
                     psnrs_stage.append(compare_psnr(np.squeeze(originals[i]), np.squeeze(reconstructions[j][i]), data_range=2))
                     mssims_stage.append(compare_ssim(np.squeeze(originals[i]), np.squeeze(reconstructions[j][i]), data_range=2, win_size=9))
+                    if self._config.debug:
+                        print("  stage" + str(j) + "_sample" + str(i) + "_psnr = " + str(psnrs_stage[-1]))
                 avg_psnrs_stages[j].append(sum(psnrs_stage)/len(psnrs_stage))
                 avg_mssims_stages[j].append(sum(mssims_stage)/len(mssims_stage))
-            
+                if self._config.debug:
+                    print(" stage" + str(j) + "_batch_avg_psnr = " + str(avg_psnrs_stages[j][-1]))
+                
         psnr_summaries = []
         mssim_summaries = []
         for j in range(self._config.stages):
@@ -283,6 +289,8 @@ class Res2pix(object):
             mssim_summary = tf.Summary()
             psnr_summary.value.add(tag='avg_val_psnr_stage' + str(j), simple_value=sum(avg_psnrs_stages[j])/len(avg_psnrs_stages[j]))
             mssim_summary.value.add(tag='avg_val_mssim_stage' + str(j), simple_value=sum(avg_mssims_stages[j])/len(avg_mssims_stages[j]))
+            if self._config.debug:
+                print("stage" + str(j) + "_avg_avg_psnr = " + str(sum(avg_psnrs_stages[j])/len(avg_psnrs_stages[j])))
             psnr_summaries.append(psnr_summary)
             mssim_summaries.append(mssim_summary)
 
@@ -292,7 +300,7 @@ class Res2pix(object):
     def _setup_model(self):
         
         # input
-        self._ops.in_img =  tf.placeholder(tf.float32, [self._config.batch_size,
+        self._ops.in_img = tf.placeholder(tf.float32, [self._config.batch_size,
                                                             self._config.input_dimensions.height,
                                                             self._config.input_dimensions.width,
                                                             self._config.input_dimensions.depth])
