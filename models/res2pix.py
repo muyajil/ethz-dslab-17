@@ -362,7 +362,7 @@ class Res2pix(object):
         residuals.append(tf.zeros_like(self._ops.in_img))
         
         images_c = tf.concat(images, 1)
-        bitmaps_c = tf.concat(bitmaps, 1)
+        bitmaps_c = tf.expand_dims(tf.concat(bitmaps, 1), -1)
         residuals_c = tf.concat(residuals, 1)
         
         self._ops.img_summary = tf.summary.image("val_img_summary", tf.concat([images_c, bitmaps_c,  residuals_c], 2))
