@@ -358,7 +358,7 @@ class Res2pix(object):
         bitmaps = [tf.concat(tf.unstack(stage_rep, axis=3), 1) for stage_rep in self._ops.binary_representations]
         images = list(self._ops.gen_preds)
         images.append(self._ops.in_img)
-        bitmaps.append(tf.zeros_like(self._ops.in_img))
+        bitmaps.append(tf.zeros_like(bitmaps[0]))
         residuals.append(tf.zeros_like(self._ops.in_img))
         
         images_c = tf.concat(images, 1)
