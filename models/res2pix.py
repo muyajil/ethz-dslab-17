@@ -104,12 +104,7 @@ class Ops(object):
     dis_summary = None
     gen_summary = None
     gen_reconstr_summary = None
-    val_in_out_img_summary = None
-    val_bitplane_summary = None
-    val_psnr_summary = None
-    val_summary = None
     gen_loss_reconstr_stages_summaries = None
-    residual_img_summary = None
     img_summary = None
 
 
@@ -181,11 +176,8 @@ class Res2pix(object):
                     
                     # show images
                     for batch in validation_set.batch_iter(stop_after_epoch=True):
-                        summary_str1, summary_str2, summary_str3, summary_str4 = sess.run([self._ops.val_in_out_img_summary, self._ops.val_bitplane_summary, self._ops.residual_img_summary, self._ops.img_summary], feed_dict={self._ops.in_img: batch})
-                        writer.add_summary(summary_str1, global_step=train_step)
-                        writer.add_summary(summary_str2, global_step=train_step)
-                        writer.add_summary(summary_str3, global_step=train_step)
-                        writer.add_summary(summary_str4, global_step=train_step)
+                        summary_str = sess.run(self._ops.img_summary, feed_dict={self._ops.in_img: batch})
+                        writer.add_summary(summary_str, global_step=train_step)
                         break # we only do one batch
                     
                     # psnr and mssim
@@ -259,30 +251,16 @@ class Res2pix(object):
             
             # get images from tf session  
             originals, reconstructions = sess.run([self._ops.in_img, self._ops.gen_preds], feed_dict={self._ops.in_img: batch})
-            
-            if self._config.debug:
-                print("Shape of originals = " + str(originals.shape))
-                print("Shape of one original = " + str(originals[0].shape))
-
-                print("Length of reconstructions = " + str(len(reconstructions)))
-                print("Shape of one reconstruction = " + str(reconstructions[0].shape))
-                print("Shape of each image = " + str(reconstructions[0][0].shape))
-
+    
             for j in range(self._config.stages):
                 psnrs_stage = []
                 mssims_stage = []
-                if self._config.debug:
-                    print(" stage" + str(j) + "_batch_avg_psnr..")
                 for i in range(self._config.batch_size):
                     psnrs_stage.append(compare_psnr(np.squeeze(originals[i]), np.squeeze(reconstructions[j][i]), data_range=2))
                     mssims_stage.append(compare_ssim(np.squeeze(originals[i]), np.squeeze(reconstructions[j][i]), data_range=2, win_size=9))
-                    if self._config.debug:
-                        print("  stage" + str(j) + "_sample" + str(i) + "_psnr = " + str(psnrs_stage[-1]))
                 avg_psnrs_stages[j].append(sum(psnrs_stage)/len(psnrs_stage))
                 avg_mssims_stages[j].append(sum(mssims_stage)/len(mssims_stage))
-                if self._config.debug:
-                    print(" stage" + str(j) + "_batch_avg_psnr = " + str(avg_psnrs_stages[j][-1]))
-                
+
         psnr_summaries = []
         mssim_summaries = []
         for j in range(self._config.stages):
@@ -290,8 +268,6 @@ class Res2pix(object):
             mssim_summary = tf.Summary()
             psnr_summary.value.add(tag='avg_val_psnr_stage' + str(j), simple_value=sum(avg_psnrs_stages[j])/len(avg_psnrs_stages[j]))
             mssim_summary.value.add(tag='avg_val_mssim_stage' + str(j), simple_value=sum(avg_mssims_stages[j])/len(avg_mssims_stages[j]))
-            if self._config.debug:
-                print("stage" + str(j) + "_avg_avg_psnr = " + str(sum(avg_psnrs_stages[j])/len(avg_psnrs_stages[j])))
             psnr_summaries.append(psnr_summary)
             mssim_summaries.append(mssim_summary)
 
@@ -344,7 +320,6 @@ class Res2pix(object):
             loss = loss + stage_loss
             i += 1
         self._ops.gen_loss_reconstr = loss
-        self._ops.residual_img_summary = tf.summary.image("residual_img_summary", tf.concat(residuals, 1))
 
         # res2res loss
         # --------------
@@ -378,18 +353,14 @@ class Res2pix(object):
         reconstr_sum.append(self._ops.gen_loss_reconstr_summary)
         self._ops.gen_reconstr_summary = tf.summary.merge(reconstr_sum)
         
-        self._ops.val_psnr_summary = tf.summary.scalar("val_psnr", self._ops.psnr)
-        self._ops.val_bitcode_histo = tf.summary.histogram("val_bitcode_histogram", self._ops.binary_representations)
-        
-        w, h, _ = self._ops.binary_representations[0][0].get_shape()
-        self._ops.val_bitplane_summary = tf.summary.image("val_bitplane_img", tf.reshape(self._ops.binary_representations[1][0,:,:,0], [1, int(w), int(h), 1]))
+        # image summary
+        b, w, h, d = self._ops.binary_representations[0].get_shape().as_list()
+        bitmaps = [tf.concat(tf.unstack(stage_rep, axis=3), 1) for stage_rep in self._ops.binary_representations]
         images = list(self._ops.gen_preds)
         images.append(self._ops.in_img)
-        self._ops.img_summary = tf.summary.image("val_img_summary", tf.concat(images, 1))
-        self._ops.val_in_out_img_summary = tf.summary.image("val_in_out_img", tf.concat([self._ops.in_img, self._ops.gen_out], 1))
-        self._ops.val_summary = tf.summary.merge([self._ops.val_in_out_img_summary,
-                                                  self._ops.val_psnr_summary,
-                                                  self._ops.val_bitcode_histo])
+        bitmaps.append(tf.zeros_like(self._ops.in_img))
+        residuals.append(tf.zeros_like(self._ops.in_img))
+        self._ops.img_summary = tf.summary.image("val_img_summary", tf.concat([tf.concat(images, 1), tf.concat(bitmaps, 1),  tf.concat(residuals, 1)], 2))
 
         # trainable variables and optimizers
         train_vars = tf.trainable_variables()

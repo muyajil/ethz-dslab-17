@@ -61,12 +61,12 @@ if __name__ == "__main__":
     model = Res2pix(config=Config(args.batch_size,
                                     input_dimensions,
                                     args.log_dir,
-                                    pretrain_epochs=20,
+                                    pretrain_epochs=30,
                                     debug=True,
                                     gen_lambda=1,
                                     learning_rate=0.001,
-                                    adam_beta1=0.8,
+                                    adam_beta1=0.9,
                                     stages=8,
                                     show_jpeg=False,
-                                    steps_between_val=2))
+                                    steps_between_val=25))
     run_model(args.epochs, args.split_ratio)
