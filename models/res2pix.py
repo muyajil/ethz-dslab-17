@@ -650,7 +650,7 @@ class Res2pix(object):
         d7 = deconv2d(d6, [self._config.batch_size, c_height*8, c_width*8, 64], kernel_height=2, kernel_width=2, stride_height=2, stride_width=2, stddev=0.02, name="g_d7_deconv")
         d8 = conv2d(d7, channels, kernel_height=3, kernel_width=3, stride_height=1, stride_width=1, stddev=0.02, name='g_d8_conv')
         
-        pred = tf.nn.tanh(d8 + prev_d8, name='g_ridge_pred)
+        pred = tf.nn.tanh(d8 + prev_d8, name='g_ridge_pred')
 
         return pred, d8
             
