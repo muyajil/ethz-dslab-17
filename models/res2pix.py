@@ -360,7 +360,12 @@ class Res2pix(object):
         images.append(self._ops.in_img)
         bitmaps.append(tf.zeros_like(self._ops.in_img))
         residuals.append(tf.zeros_like(self._ops.in_img))
-        self._ops.img_summary = tf.summary.image("val_img_summary", tf.concat([tf.concat(images, 1), tf.concat(bitmaps, 1),  tf.concat(residuals, 1)], 2))
+        
+        images_c = tf.concat(images, 1)
+        bitmaps_c = tf.concat(bitmaps, 1)
+        residuals_c = tf.concat(residuals, 1)
+        
+        self._ops.img_summary = tf.summary.image("val_img_summary", tf.concat([images_c, bitmaps_c,  residuals_c], 2))
 
         # trainable variables and optimizers
         train_vars = tf.trainable_variables()
