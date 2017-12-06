@@ -297,7 +297,7 @@ class Res2pix(object):
             self._ops.patches = tf.concat(tf.split(self._ops.in_img, npatches, 2), 0)
                                                             
         with tf.variable_scope("generator"):
-            self._ops.gen_patch_preds = self._generator_R2I_decode(patches)
+            self._ops.gen_patch_preds = self._generator_R2I_decode(self._ops.patches)
             self._ops.gen_preds = [tf.concat(tf.split(stage_patch_pred, npatches, 0), 2) for stage_patch_pred in gen_patch_preds]
 
         with tf.variable_scope("discriminator"):
