@@ -363,7 +363,7 @@ class Res2pix(object):
             bitmaps.append(tf.zeros_like(bitmaps[0]))
             images = list(self._ops.gen_preds)
             images.append(self._ops.in_img)
-            residuals = [tf.conact(tf.split(patch_residual, npatches, 0), 2) for patch_residual in patch_residuals]
+            residuals = [tf.concat(tf.split(patch_residual, npatches, 0), 2) for patch_residual in patch_residuals]
             residuals.append(tf.zeros_like(self._ops.in_img))
             images_c = tf.concat(images, 1)
             bitmaps_c = tf.concat(bitmaps, 1)
