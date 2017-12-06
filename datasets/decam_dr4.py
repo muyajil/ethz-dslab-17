@@ -10,7 +10,7 @@ class Decam(Dataset):
 
     def _preprocess_pipeline(self):
         # lambda x: np.arcsinh(10*x)/3
-        return [lambda x: (x / 2**16), lambda x: 2*x-1]
+        return [lambda x: (x / 2**16), lambda x: 2*x-1, lambda x: np.arcsinh(10*x)/3]
 
     def set_seed(self, file_name):
         hash_string = hashlib.md5(file_name.encode()).hexdigest()
