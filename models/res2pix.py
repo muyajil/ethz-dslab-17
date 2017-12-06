@@ -192,51 +192,52 @@ class Res2pix(object):
         
         
     def _evaluate_jpeg(self, sess, validation_set):
-        qualities = []
-        for quality in range(0, 101, 1)[1:]:
-            print("measuring performance for quality = " + str(quality))
-            avg_psnrs = []
-            avg_mssims = []
-            avg_bpps = []
-            for batch in validation_set.batch_iter(stop_after_epoch=True):
-                originals = sess.run(self._ops.in_img, feed_dict={self._ops.in_img: batch})
+        with open('jpeg_evaluation.txt', 'w') as file:
+            qualities = []
+            for quality in range(0, 101, 1)[1:]:
+                print("measuring performance for quality = " + str(quality))
+                avg_psnrs = []
+                avg_mssims = []
+                avg_bpps = []
+                for batch in validation_set.batch_iter(stop_after_epoch=True):
+                    originals = sess.run(self._ops.in_img, feed_dict={self._ops.in_img: batch})
+                    
+                    original_size_pixel = originals.shape[1] * originals.shape[2]
+                    
+                    psnrs = []
+                    mssims = []
+                    bpps = []
+                    for i in range(self._config.batch_size):
+                        
+                        # get jpeg reconstruction
+                        pil_original = Image.fromarray(np.squeeze(((originals[i]+1)/2)*255).astype('uint8'), 'L')  # we may loose precision here
+                        pil_original.save("out.jpg", "JPEG", quality=quality, optimize=True, progressive=True)   
+                        pil_jpeg = Image.open("out.jpg")
+                        jpeg = np.array(pil_jpeg).astype(originals[i].dtype)
+                        jpeg = ((jpeg / 255) * 2) - 1
+                        file_size_bits = os.path.getsize("out.jpg")*8
+                        
+                        # measure performance
+                        psnrs.append(compare_psnr(np.squeeze(originals[i]), jpeg, data_range=2))
+                        mssims.append(compare_ssim(np.squeeze(originals[i]), jpeg, data_range=2, win_size=9))
+                        bpps.append(float(file_size_bits) / original_size_pixel)
+                        os.remove("out.jpg")
+                        
+                    avg_psnr = sum(psnrs)/len(psnrs)
+                    avg_psnrs.append(avg_psnr)
+                    avg_mssim = sum(mssims)/len(mssims)
+                    avg_mssims.append(avg_mssim)
+                    avg_bpp = sum(bpps)/len(bpps)
+                    avg_bpps.append(avg_bpp)
+                psnr = sum(avg_psnrs)/len(avg_psnrs)
+                mssim = sum(avg_mssims)/len(avg_mssims)
+                bpp = sum(avg_bpps)/len(avg_bpps)
+                print("bpp = " + str(bpp))
+                print("psnr = " + str(psnr))
+                print("mssim = " + str(mssim))
+                file.write(str(bpp) + ' ' + str(psnr) + ' ' + str(mssim) + '\n')
+                qualities.append((bpp, psnr, mssim))
                 
-                original_size_pixel = originals.shape[1] * originals.shape[2]
-                
-                psnrs = []
-                mssims = []
-                bpps = []
-                for i in range(self._config.batch_size):
-                    
-                    # get jpeg reconstruction
-                    pil_original = Image.fromarray(np.squeeze(((originals[i]+1)/2)*255).astype('uint8'), 'L')  # we may loose precision here
-                    pil_original.save("out.jpg", "JPEG", quality=quality, optimize=True, progressive=True)   
-                    pil_jpeg = Image.open("out.jpg")
-                    jpeg = np.array(pil_jpeg).astype(originals[i].dtype)
-                    jpeg = ((jpeg / 255) * 2) - 1
-                    file_size_bits = os.path.getsize("out.jpg")*8
-                    
-                    # measure performance
-                    psnrs.append(compare_psnr(np.squeeze(originals[i]), jpeg, data_range=2))
-                    mssims.append(compare_ssim(np.squeeze(originals[i]), jpeg, data_range=2, win_size=9))
-                    bpps.append(float(file_size_bits) / original_size_pixel)
-                    os.remove("out.jpg")
-                    
-                avg_psnr = sum(psnrs)/len(psnrs)
-                avg_psnrs.append(avg_psnr)
-                avg_mssim = sum(mssims)/len(mssims)
-                avg_mssims.append(avg_mssim)
-                avg_bpp = sum(bpps)/len(bpps)
-                avg_bpps.append(avg_bpp)
-            psnr = sum(avg_psnrs)/len(avg_psnrs)
-            mssim = sum(avg_mssims)/len(avg_mssims)
-            bpp = sum(avg_bpps)/len(avg_bpps)
-            print("bpp = " + str(bpp))
-            print("psnr = " + str(psnr))
-            print("mssim = " + str(mssim))
-
-            qualities.append((bpp, psnr, mssim))
-            
         print("length of qualities list = " + str(len(qualities)))
         return sorted(qualities, key=lambda x: x[0])
                     
