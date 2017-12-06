@@ -292,6 +292,8 @@ class Res2pix(object):
                                                             self._config.input_dimensions.height,
                                                             self._config.input_dimensions.width,
                                                             self._config.input_dimensions.depth])
+            print("number of patches = " + str(npatches))
+            print("shape of input image = " + str(self._ops.in_img.get_shape()))
             self._ops.patches = tf.concat(tf.split(self._ops.in_img, npatches, 2), 0)
                                                             
         with tf.variable_scope("generator"):
