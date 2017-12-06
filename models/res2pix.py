@@ -212,7 +212,7 @@ class Res2pix(object):
                     psnrs = []
                     mssims = []
                     bpps = []
-                    npatches = self._config.input_dimensions.width / self._config.patch_size
+                    npatches = int(self._config.input_dimensions.width / self._config.patch_size)
                     for i in range(self._config.batch_size * npatches):
                         
                         # get jpeg reconstruction
@@ -262,7 +262,7 @@ class Res2pix(object):
             for j in range(self._config.stages):
                 psnrs_stage = []
                 mssims_stage = []
-                npatches = self._config.input_dimensions.width / self._config.patch_size
+                npatches = int(self._config.input_dimensions.width / self._config.patch_size)
                 for i in range(self._config.batch_size * npatches):
                     psnrs_stage.append(compare_psnr(np.squeeze(originals[i]), np.squeeze(reconstructions[j][i]), data_range=2))
                     mssims_stage.append(compare_ssim(np.squeeze(originals[i]), np.squeeze(reconstructions[j][i]), data_range=2, win_size=9))
