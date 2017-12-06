@@ -284,7 +284,7 @@ class Res2pix(object):
 
     def _setup_model(self):
         
-        npatches = self._config.input_dimensions.width / self._config.patch_size
+        npatches = int(self._config.input_dimensions.width / self._config.patch_size)
         
         # input
         with tf.variable_scope("input"):
@@ -359,7 +359,7 @@ class Res2pix(object):
         # image summary
         with tf.variable_scope("image_summary"):
             b, w, h, d = self._ops.binary_representations[0].get_shape().as_list()
-            bitmaps = [tf.concat(tf.split(tf.concat(tf.split(stage_rep, npatches, 0), 2), d, 3), 1) for stage_rep in self._ops.binary_representations]
+            bitmaps = [tf.concat(tf.split(tf.concat(tf.split(stage_rep, npatches, 0), 2), int(d), 3), 1) for stage_rep in self._ops.binary_representations]
             bitmaps.append(tf.zeros_like(bitmaps[0]))
             images = list(self._ops.gen_preds)
             images.append(self._ops.in_img)
