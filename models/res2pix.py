@@ -318,7 +318,8 @@ class Res2pix(object):
                 i = 0
                 for pred in self._ops.gen_patch_preds:
                     stage_residual = self._ops.patches - pred
-                    stage_loss = tf.reduce_mean(tf.reduce_sum(tf.square(stage_residual), [1, 2, 3]))
+                    stage_loss = tf.reduce_mean(tf.reduce_sum(tf.abs(stage_residual), [1, 2, 3]))
+                    # stage_loss = tf.reduce_mean(tf.reduce_sum(tf.square(stage_residual), [1, 2, 3]))
                     losses.append(stage_loss)
                     patch_residuals.append(stage_residual)
                     loss = loss + stage_loss
