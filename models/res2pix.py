@@ -153,8 +153,6 @@ class Res2pix(object):
         # training  
         print("Starting with training..")
         start_time = time.time()
-        bpp = float(self._code_bits) / (self._config.input_dimensions.height * self._config.input_dimensions.width)
-        print("Bits per Pixel of all stages together = " + str(bpp))
         for epoch in xrange(epochs):
             for batch_num, batch in enumerate(training_set.batch_iter(stop_after_epoch=True)):
                 
