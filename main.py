@@ -69,6 +69,6 @@ if __name__ == "__main__":
                                     stages=10,
                                     show_jpeg=False,
                                     steps_between_val=50,
-                                    patch_size=512,
+                                    patch_size=256,
                                     conv_filter_size=3))
     run_model(args.epochs, args.split_ratio)
