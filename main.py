@@ -63,7 +63,7 @@ if __name__ == "__main__":
                                     args.log_dir,
                                     pretrain_epochs=30,
                                     debug=True,
-                                    gen_lambda=100,
+                                    gen_lambda=1,
                                     learning_rate=0.0002,
                                     adam_beta1=0.9,
                                     stages=10,
