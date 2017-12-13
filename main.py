@@ -70,5 +70,6 @@ if __name__ == "__main__":
                                     show_jpeg=False,
                                     steps_between_val=50,
                                     patch_size=256,
-                                    conv_filter_size=3))
+                                    conv_filter_size=3,
+                                    bitplane_depth=2))
     run_model(args.epochs, args.split_ratio)

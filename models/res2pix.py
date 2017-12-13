@@ -36,6 +36,7 @@ class Config(object):
     input_dimensions = None
     stages = None
     conv_filter_size = None
+    bitplane_depth = None
 
     # parameters for training
     learning_rate = None
@@ -57,7 +58,8 @@ class Config(object):
                  show_jpeg=True,
                  steps_between_val=100,
                  patch_size=128,
-                 conv_filter_size=3):
+                 conv_filter_size=3,
+                 bitplane_depth=8):
                      
         self.batch_size = batch_size
         self.input_dimensions = input_dimensions
@@ -72,7 +74,7 @@ class Config(object):
         self.steps_between_val = steps_between_val
         self.patch_size = patch_size
         self.conv_filter_size = conv_filter_size
-
+        self.bitplane_depth = bitplane_depth
 
 class Ops(object):
     
@@ -360,8 +362,11 @@ class Res2pix(object):
         
         # image summary
         with tf.variable_scope("image_summary"):
-            b, w, h, d = self._ops.binary_representations[0].get_shape().as_list()
-            bitmaps = [tf.concat(tf.split(tf.concat(tf.split(stage_rep, npatches, 0), 2), int(d), 3), 1) for stage_rep in self._ops.binary_representations]
+            b, h, w, d = self._ops.binary_representations[0].get_shape().as_list()
+            dif = 8 - int(d)
+            bitmaps_pre = [tf.concat(tf.split(tf.concat(tf.split(stage_rep, npatches, 0), 2), int(d), 3), 1) for stage_rep in self._ops.binary_representations]
+            b_pre, h_pre, w_pre, d_pre = bitmaps_pre[0].get_shape().as_list()
+            bitmaps = [tf.concat([bitmap_pre, tf.zeros((b_pre, int(h*dif), w_pre, d_pre))], 1) for bitmap_pre in bitmaps_pre]
             bitmaps.append(tf.zeros_like(bitmaps[0]))
             images = list(self._ops.gen_preds)
             images.append(self._ops.in_img)
@@ -454,7 +459,7 @@ class Res2pix(object):
         e4 = tf.nn.relu(batch_norm(conv2d(e3, 256, kernel_height=self._config.conv_filter_size, kernel_width=self._config.conv_filter_size, stride_height=2, stride_width=2, stddev=0.02, name='g_e4_conv'), name='g_bn_e4'), name='g_ridge_e4')
         e5 = tf.nn.relu(batch_norm(conv2d(e4, 256, kernel_height=self._config.conv_filter_size, kernel_width=self._config.conv_filter_size, stride_height=1, stride_width=1, stddev=0.02, name='g_e5_conv'), name='g_bn_e5'), name='g_ridge_e5')
         e6 = tf.nn.relu(batch_norm(conv2d(e5, 256, kernel_height=self._config.conv_filter_size, kernel_width=self._config.conv_filter_size, stride_height=2, stride_width=2, stddev=0.02, name='g_e6_conv'), name='g_bn_e6'), name='g_ridge_e6')
-        e7 = tf.nn.tanh(conv2d(e6, 8, kernel_height=1, kernel_width=1, stride_height=1, stride_width=1, stddev=0.02, name='g_e7_conv'), name='g_ridge_e7')
+        e7 = tf.nn.tanh(conv2d(e6, self._config.bitplane_depth, kernel_height=1, kernel_width=1, stride_height=1, stride_width=1, stddev=0.02, name='g_e7_conv'), name='g_ridge_e7')
         
         # binarization
         self._ops.binary_representations.append(binarization(e7))
