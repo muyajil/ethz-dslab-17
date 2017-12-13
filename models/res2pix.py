@@ -425,7 +425,7 @@ class Res2pix(object):
     def _generator_R2I_decode(self, image):
         stage_preds = []
         current_prediction = 0
-        current_conv_links = [0, 0, 0]
+        current_conv_links = [0, 0, 0, 0]
         current_residual = image
         for s in range(self._config.stages + 1)[1:]:
             with tf.variable_scope("stage_" + str(s)):
@@ -485,8 +485,10 @@ class Res2pix(object):
             d7_prev = tf.nn.relu(batch_norm(conv2d(prev_convs[2], 64, kernel_height=self._config.conv_filter_size, kernel_width=self._config.conv_filter_size, stride_height=1, stride_width=1, stddev=0.02, name='g_d7_conv_prev'), name='g_bn_d7_prev'), name='g_ridge_d7_prev')
         d7_comb = tf.nn.tanh(d7 + d7_prev, name='g_ridge_d7')  
         
-        pred = tf.nn.tanh(conv2d(d7_comb, channels, kernel_height=self._config.conv_filter_size, kernel_width=self._config.conv_filter_size, stride_height=1, stride_width=1, stddev=0.02, name='g_d8_conv'), name='g_ridge_d8')
+        d8 = conv2d(d7_comb, channels, kernel_height=self._config.conv_filter_size, kernel_width=self._config.conv_filter_size, stride_height=1, stride_width=1, stddev=0.02, name='g_d8_conv')
+        
+        pred = tf.nn.tanh(d8 + prev_convs[3], name='g_ridge_d8')
 
-        convs = [d3, d5, d7]
+        convs = [d3, d5, d7, d8]
 
         return pred, convs
