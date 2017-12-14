@@ -171,7 +171,7 @@ class Dataset(object):
                     raise ValueError(file_name + " could not be loaded!")
                 try:
                     cropped_data_point = self._crop_input(data_point)
-                except RuntimeError:
+                except ValueError:
                     continue
                 processed_data_point = [cropped_data_point]
                 for fun in self._preprocess_pipeline():
