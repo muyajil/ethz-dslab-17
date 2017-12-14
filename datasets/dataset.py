@@ -169,7 +169,10 @@ class Dataset(object):
                 except (TypeError, ValueError, OSError) as e:
                     print(e)
                     raise ValueError(file_name + " could not be loaded!")
-                cropped_data_point = self._crop_input(data_point)
+                try:
+                    cropped_data_point = self._crop_input(data_point)
+                except RuntimeError:
+                    continue
                 processed_data_point = [cropped_data_point]
                 for fun in self._preprocess_pipeline():
                     processed_data_point = map(fun, processed_data_point)
