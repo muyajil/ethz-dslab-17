@@ -5,7 +5,7 @@ import urllib.error
 
 
 def download_images(download_location, min_images):
-    with open('fall11_urls.txt', encoding='ansi') as file:
+    with open('fall11_urls.txt', encoding='latin-1') as file:
         downloaded_images = 0
         for line in file.readlines():
             if downloaded_images > min_images:
