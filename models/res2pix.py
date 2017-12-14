@@ -35,6 +35,8 @@ class Config(object):
     patch_size = None
     input_dimensions = None
     stages = None
+    conv_filter_size = None
+    bitplane_depth = None
 
     # parameters for training
     learning_rate = None
@@ -55,7 +57,9 @@ class Config(object):
                  debug=False,
                  show_jpeg=True,
                  steps_between_val=100,
-                 patch_size=128):
+                 patch_size=128,
+                 conv_filter_size=3,
+                 bitplane_depth=8):
                      
         self.batch_size = batch_size
         self.input_dimensions = input_dimensions
@@ -69,7 +73,8 @@ class Config(object):
         self.show_jpeg = show_jpeg
         self.steps_between_val = steps_between_val
         self.patch_size = patch_size
-
+        self.conv_filter_size = conv_filter_size
+        self.bitplane_depth = bitplane_depth
 
 class Ops(object):
     
@@ -153,8 +158,6 @@ class Res2pix(object):
         # training  
         print("Starting with training..")
         start_time = time.time()
-        bpp = float(self._code_bits) / (self._config.input_dimensions.height * self._config.input_dimensions.width)
-        print("Bits per Pixel of all stages together = " + str(bpp))
         for epoch in xrange(epochs):
             for batch_num, batch in enumerate(training_set.batch_iter(stop_after_epoch=True)):
                 
@@ -320,6 +323,7 @@ class Res2pix(object):
                 i = 0
                 for pred in self._ops.gen_patch_preds:
                     stage_residual = self._ops.patches - pred
+                    # stage_loss = tf.reduce_mean(tf.reduce_sum(tf.abs(stage_residual), [1, 2, 3]))
                     stage_loss = tf.reduce_mean(tf.reduce_sum(tf.square(stage_residual), [1, 2, 3]))
                     losses.append(stage_loss)
                     patch_residuals.append(stage_residual)
@@ -358,8 +362,11 @@ class Res2pix(object):
         
         # image summary
         with tf.variable_scope("image_summary"):
-            b, w, h, d = self._ops.binary_representations[0].get_shape().as_list()
-            bitmaps = [tf.concat(tf.split(tf.concat(tf.split(stage_rep, npatches, 0), 2), int(d), 3), 1) for stage_rep in self._ops.binary_representations]
+            b, h, w, d = self._ops.binary_representations[0].get_shape().as_list()
+            dif = 8 - int(d)
+            bitmaps_pre = [tf.concat(tf.split(tf.concat(tf.split(stage_rep, npatches, 0), 2), int(d), 3), 1) for stage_rep in self._ops.binary_representations]
+            b_pre, h_pre, w_pre, d_pre = bitmaps_pre[0].get_shape().as_list()
+            bitmaps = [tf.concat([bitmap_pre, tf.zeros((b_pre, int(h*dif), w_pre, d_pre))], 1) for bitmap_pre in bitmaps_pre]
             bitmaps.append(tf.zeros_like(bitmaps[0]))
             images = list(self._ops.gen_preds)
             images.append(self._ops.in_img)
@@ -423,7 +430,7 @@ class Res2pix(object):
     def _generator_R2I_decode(self, image):
         stage_preds = []
         current_prediction = 0
-        current_conv_links = [0, 0, 0]
+        current_conv_links = [0, 0, 0, 0]
         current_residual = image
         for s in range(self._config.stages + 1)[1:]:
             with tf.variable_scope("stage_" + str(s)):
@@ -446,45 +453,47 @@ class Res2pix(object):
         c_width = int(width / 8)
         
         # encoder
-        e1 = tf.nn.relu(batch_norm(conv2d(res_in, 64, kernel_height=3, kernel_width=3, stride_height=1, stride_width=1, stddev=0.02, name='g_e1_conv'), name='g_bn_e1'), name='g_ridge_e1')
-        e2 = tf.nn.relu(batch_norm(conv2d(e1, 128, kernel_height=3, kernel_width=3, stride_height=2, stride_width=2, stddev=0.02, name='g_e2_conv'), name='g_bn_e2'), name='g_ridge_e2')
-        e3 = tf.nn.relu(batch_norm(conv2d(e2, 128, kernel_height=3, kernel_width=3, stride_height=1, stride_width=1, stddev=0.02, name='g_e3_conv'), name='g_bn_e3'), name='g_ridge_e3')
-        e4 = tf.nn.relu(batch_norm(conv2d(e3, 256, kernel_height=3, kernel_width=3, stride_height=2, stride_width=2, stddev=0.02, name='g_e4_conv'), name='g_bn_e4'), name='g_ridge_e4')
-        e5 = tf.nn.relu(batch_norm(conv2d(e4, 256, kernel_height=3, kernel_width=3, stride_height=1, stride_width=1, stddev=0.02, name='g_e5_conv'), name='g_bn_e5'), name='g_ridge_e5')
-        e6 = tf.nn.relu(batch_norm(conv2d(e5, 256, kernel_height=3, kernel_width=3, stride_height=2, stride_width=2, stddev=0.02, name='g_e6_conv'), name='g_bn_e6'), name='g_ridge_e6')
-        e7 = tf.nn.tanh(conv2d(e6, 8, kernel_height=1, kernel_width=1, stride_height=1, stride_width=1, stddev=0.02, name='g_e7_conv'), name='g_ridge_e7')
+        e1 = tf.nn.relu(batch_norm(conv2d(res_in, 64, kernel_height=self._config.conv_filter_size, kernel_width=self._config.conv_filter_size, stride_height=1, stride_width=1, stddev=0.02, name='g_e1_conv'), name='g_bn_e1'), name='g_ridge_e1')
+        e2 = tf.nn.relu(batch_norm(conv2d(e1, 128, kernel_height=self._config.conv_filter_size, kernel_width=self._config.conv_filter_size, stride_height=2, stride_width=2, stddev=0.02, name='g_e2_conv'), name='g_bn_e2'), name='g_ridge_e2')
+        e3 = tf.nn.relu(batch_norm(conv2d(e2, 128, kernel_height=self._config.conv_filter_size, kernel_width=self._config.conv_filter_size, stride_height=1, stride_width=1, stddev=0.02, name='g_e3_conv'), name='g_bn_e3'), name='g_ridge_e3')
+        e4 = tf.nn.relu(batch_norm(conv2d(e3, 256, kernel_height=self._config.conv_filter_size, kernel_width=self._config.conv_filter_size, stride_height=2, stride_width=2, stddev=0.02, name='g_e4_conv'), name='g_bn_e4'), name='g_ridge_e4')
+        e5 = tf.nn.relu(batch_norm(conv2d(e4, 256, kernel_height=self._config.conv_filter_size, kernel_width=self._config.conv_filter_size, stride_height=1, stride_width=1, stddev=0.02, name='g_e5_conv'), name='g_bn_e5'), name='g_ridge_e5')
+        e6 = tf.nn.relu(batch_norm(conv2d(e5, 256, kernel_height=self._config.conv_filter_size, kernel_width=self._config.conv_filter_size, stride_height=2, stride_width=2, stddev=0.02, name='g_e6_conv'), name='g_bn_e6'), name='g_ridge_e6')
+        e7 = tf.nn.tanh(conv2d(e6, self._config.bitplane_depth, kernel_height=1, kernel_width=1, stride_height=1, stride_width=1, stddev=0.02, name='g_e7_conv'), name='g_ridge_e7')
         
         # binarization
         self._ops.binary_representations.append(binarization(e7))
 
         # decoder
-        d1 = conv2d(self._ops.binary_representations[-1], 256, kernel_height=3, kernel_width=3, stride_height=1, stride_width=1, stddev=0.02, name='g_d1_conv')
-        d2 = tf.nn.relu(batch_norm(conv2d(d1, 256, kernel_height=3, kernel_width=3, stride_height=1, stride_width=1, stddev=0.02, name='g_d2_conv'), name='g_bn_d2'), name='g_ridge_d2')
+        d1 = conv2d(self._ops.binary_representations[-1], 256, kernel_height=self._config.conv_filter_size, kernel_width=self._config.conv_filter_size, stride_height=1, stride_width=1, stddev=0.02, name='g_d1_conv')
+        d2 = tf.nn.relu(batch_norm(conv2d(d1, 256, kernel_height=self._config.conv_filter_size, kernel_width=self._config.conv_filter_size, stride_height=1, stride_width=1, stddev=0.02, name='g_d2_conv'), name='g_bn_d2'), name='g_ridge_d2')
         
         d3 = deconv2d(d2, [batchsize, c_height*2, c_width*2, 256], kernel_height=2, kernel_width=2, stride_height=2, stride_width=2, stddev=0.02, name="g_d3_deconv")
         d3_prev = 0
         if prev_convs[0] != 0:
-            d3_prev = tf.nn.relu(batch_norm(conv2d(prev_convs[0], 256, kernel_height=3, kernel_width=3, stride_height=1, stride_width=1, stddev=0.02, name='g_d3_conv_prev'), name='g_bn_d3_prev'), name='g_ridge_d3_prev')
+            d3_prev = tf.nn.relu(batch_norm(conv2d(prev_convs[0], 256, kernel_height=self._config.conv_filter_size, kernel_width=self._config.conv_filter_size, stride_height=1, stride_width=1, stddev=0.02, name='g_d3_conv_prev'), name='g_bn_d3_prev'), name='g_ridge_d3_prev')
         d3_comb = tf.nn.tanh(d3 + d3_prev, name='g_ridge_d3') 
         
-        d4 = tf.nn.relu(batch_norm(conv2d(d3_comb, 128, kernel_height=3, kernel_width=3, stride_height=1, stride_width=1, stddev=0.02, name='g_d4_conv'), name='g_bn_d4'), name='g_ridge_d4')
+        d4 = tf.nn.relu(batch_norm(conv2d(d3_comb, 128, kernel_height=self._config.conv_filter_size, kernel_width=self._config.conv_filter_size, stride_height=1, stride_width=1, stddev=0.02, name='g_d4_conv'), name='g_bn_d4'), name='g_ridge_d4')
         
         d5 = deconv2d(d4, [batchsize, c_height*4, c_width*4, 128], kernel_height=2, kernel_width=2, stride_height=2, stride_width=2, stddev=0.02, name="g_d5_deconv")
         d5_prev = 0
         if prev_convs[1] != 0:
-            d5_prev = tf.nn.relu(batch_norm(conv2d(prev_convs[1], 128, kernel_height=3, kernel_width=3, stride_height=1, stride_width=1, stddev=0.02, name='g_d5_conv_prev'), name='g_bn_d5_prev'), name='g_ridge_d5_prev')
+            d5_prev = tf.nn.relu(batch_norm(conv2d(prev_convs[1], 128, kernel_height=self._config.conv_filter_size, kernel_width=self._config.conv_filter_size, stride_height=1, stride_width=1, stddev=0.02, name='g_d5_conv_prev'), name='g_bn_d5_prev'), name='g_ridge_d5_prev')
         d5_comb = tf.nn.tanh(d5 + d5_prev, name='g_ridge_d5') 
         
-        d6 = tf.nn.relu(batch_norm(conv2d(d5_comb, 64, kernel_height=3, kernel_width=3, stride_height=1, stride_width=1, stddev=0.02, name='g_d6_conv'), name='g_bn_d6'), name='g_ridge_d6')
+        d6 = tf.nn.relu(batch_norm(conv2d(d5_comb, 64, kernel_height=self._config.conv_filter_size, kernel_width=self._config.conv_filter_size, stride_height=1, stride_width=1, stddev=0.02, name='g_d6_conv'), name='g_bn_d6'), name='g_ridge_d6')
 
         d7 = deconv2d(d6, [batchsize, c_height*8, c_width*8, 64], kernel_height=2, kernel_width=2, stride_height=2, stride_width=2, stddev=0.02, name="g_d7_deconv")
         d7_prev = 0
         if prev_convs[2] != 0:
-            d7_prev = tf.nn.relu(batch_norm(conv2d(prev_convs[2], 64, kernel_height=3, kernel_width=3, stride_height=1, stride_width=1, stddev=0.02, name='g_d7_conv_prev'), name='g_bn_d7_prev'), name='g_ridge_d7_prev')
+            d7_prev = tf.nn.relu(batch_norm(conv2d(prev_convs[2], 64, kernel_height=self._config.conv_filter_size, kernel_width=self._config.conv_filter_size, stride_height=1, stride_width=1, stddev=0.02, name='g_d7_conv_prev'), name='g_bn_d7_prev'), name='g_ridge_d7_prev')
         d7_comb = tf.nn.tanh(d7 + d7_prev, name='g_ridge_d7')  
         
-        pred = tf.nn.tanh(conv2d(d7_comb, channels, kernel_height=3, kernel_width=3, stride_height=1, stride_width=1, stddev=0.02, name='g_d8_conv'), name='g_ridge_d8')
+        d8 = conv2d(d7_comb, channels, kernel_height=self._config.conv_filter_size, kernel_width=self._config.conv_filter_size, stride_height=1, stride_width=1, stddev=0.02, name='g_d8_conv')
+        
+        pred = tf.nn.tanh(d8 + prev_convs[3], name='g_ridge_d8')
 
-        convs = [d3, d5, d7]
+        convs = [d3, d5, d7, d8]
 
         return pred, convs

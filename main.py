@@ -64,10 +64,12 @@ if __name__ == "__main__":
                                     pretrain_epochs=30,
                                     debug=True,
                                     gen_lambda=1,
-                                    learning_rate=0.001,
+                                    learning_rate=0.002,
                                     adam_beta1=0.9,
-                                    stages=10,
+                                    stages=4,
                                     show_jpeg=False,
                                     steps_between_val=50,
-                                    patch_size=128))
+                                    patch_size=256,
+                                    conv_filter_size=3,
+                                    bitplane_depth=2))
     run_model(args.epochs, args.split_ratio)
