@@ -2,7 +2,8 @@ import argparse
 import os
 import urllib.request
 import urllib.error
-
+import socket
+socket.setdefaulttimeout(10)
 
 def download_images(download_location, min_images):
     with open('fall11_urls.txt', encoding='latin-1') as file:
@@ -20,7 +21,7 @@ def download_images(download_location, min_images):
                 else:
                     print("Link: {} is corrupt".format(link))
                     os.remove(path_to_image)
-            except (urllib.error.HTTPError, urllib.error.URLError):
+            except:
                 print("Link: {} is broken".format(link))
                 continue
 
