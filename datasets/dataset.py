@@ -166,13 +166,7 @@ class Dataset(object):
 
                 try:
                     data_point = self._load_function(file_name)
-                except (TypeError, ValueError, OSError) as e:
-                    print(e)
-                    raise ValueError(file_name + " could not be loaded!")
-                try:
                     cropped_data_point = self._crop_input(data_point)
-                except KeyboardInterrupt:
-                    raise KeyboardInterrupt
                 except:
                     continue
                 processed_data_point = [cropped_data_point]
