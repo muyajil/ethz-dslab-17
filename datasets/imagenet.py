@@ -36,7 +36,15 @@ class ImageNet(Dataset):
             return datapoint[:, crop_width:-crop_width, :]
         if crop_width == 0:
             return datapoint[crop_height:-crop_height, :, :]
-        return datapoint[crop_height:-crop_height, crop_width:-crop_width, :]
+
+        cropped = datapoint[crop_height:-crop_height, crop_width:-crop_width, :]
+        diff_height = cropped.shape[0] - self._config.input_dimensions.height
+        diff_width = cropped.shape[1] - self._config.input_dimensions.width
+        if diff_height:
+            cropped = cropped[:-diff_height, :, :]
+        if diff_width:
+            cropped = cropped[:, :-diff_width, :]
+        return cropped
 
 
 config = DatasetConfig(augmentation_multiplicator=1)
