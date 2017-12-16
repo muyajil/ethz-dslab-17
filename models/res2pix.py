@@ -611,11 +611,11 @@ class Res2pix(object):
             # decoder
             d1 = conv2d(self._ops.binary_representations[-1], 256, kernel_height=3, kernel_width=3, stride_height=1, stride_width=1, stddev=0.02, name='g_d1_conv')
             d2 = tf.nn.relu(batch_norm(conv2d(d1, 256, kernel_height=3, kernel_width=3, stride_height=1, stride_width=1, stddev=0.02, name='g_d2_conv'), name='g_bn_d2'), name='g_ridge_d2')
-            d3 = deconv2d(d2, [self._config.batch_size, c_height*2, c_width*2, 256], kernel_height=2, kernel_width=2, stride_height=2, stride_width=2, stddev=0.02, name="g_d3_deconv")
+            d3 = deconv2d(d2, [batchsize, c_height*2, c_width*2, 256], kernel_height=2, kernel_width=2, stride_height=2, stride_width=2, stddev=0.02, name="g_d3_deconv")
             d4 = tf.nn.relu(batch_norm(conv2d(d3, 128, kernel_height=3, kernel_width=3, stride_height=1, stride_width=1, stddev=0.02, name='g_d4_conv'), name='g_bn_d4'), name='g_ridge_d4')
-            d5 = deconv2d(d4, [self._config.batch_size, c_height*4, c_width*4, 128], kernel_height=2, kernel_width=2, stride_height=2, stride_width=2, stddev=0.02, name="g_d5_deconv")
+            d5 = deconv2d(d4, [batchsize, c_height*4, c_width*4, 128], kernel_height=2, kernel_width=2, stride_height=2, stride_width=2, stddev=0.02, name="g_d5_deconv")
             d6 = tf.nn.relu(batch_norm(conv2d(d5, 64, kernel_height=3, kernel_width=3, stride_height=1, stride_width=1, stddev=0.02, name='g_d6_conv'), name='g_bn_d6'), name='g_ridge_d6')
-            d7 = deconv2d(d6, [self._config.batch_size, c_height*8, c_width*8, 64], kernel_height=2, kernel_width=2, stride_height=2, stride_width=2, stddev=0.02, name="g_d7_deconv")
+            d7 = deconv2d(d6, [batchsize, c_height*8, c_width*8, 64], kernel_height=2, kernel_width=2, stride_height=2, stride_width=2, stddev=0.02, name="g_d7_deconv")
             d8 = conv2d(d7, channels, kernel_height=3, kernel_width=3, stride_height=1, stride_width=1, stddev=0.02, name='g_d8_conv')
             
             pred = tf.nn.tanh(d8 + prev_d8, name='g_ridge_pred')
