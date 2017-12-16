@@ -10,7 +10,6 @@ from scipy.misc import imread
 class ImageNet(Dataset):
 
     def _preprocess_pipeline(self):
-        # lambda x: np.arcsinh(10*x)/3
         return [lambda x: (x / 255), lambda x: 2*x-1]
 
     def set_seed(self, file_name):
