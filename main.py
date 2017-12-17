@@ -67,7 +67,7 @@ if __name__ == "__main__":
                                     learning_rate=0.001,
                                     adam_beta1=0.9,
                                     stages=8,
-                                    show_jpeg=True,
+                                    show_jpeg=False,
                                     steps_between_val=50,
                                     patch_size=64,
                                     conv_filter_size=3,
