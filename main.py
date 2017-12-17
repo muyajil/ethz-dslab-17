@@ -69,7 +69,7 @@ if __name__ == "__main__":
                                     stages=8,
                                     show_jpeg=True,
                                     steps_between_val=50,
-                                    patch_size=256,
+                                    patch_size=32,
                                     conv_filter_size=3,
                                     bitplane_depth=8))
     run_model(args.epochs, args.split_ratio)
