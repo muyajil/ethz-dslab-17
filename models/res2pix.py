@@ -301,8 +301,8 @@ class Res2pix(object):
                                                             
         with tf.variable_scope("generator"):
             
-            #self._ops.gen_patch_preds = self._generator_R2I_predconn(self._ops.patches)
-            self._ops.gen_patch_preds = self._generator_R2I_decode(self._ops.patches)
+            self._ops.gen_patch_preds = self._generator_R2I_predconn(self._ops.patches)
+            #self._ops.gen_patch_preds = self._generator_R2I_decode(self._ops.patches)
             #self._ops.gen_patch_preds = self._generator_R2I_decode_2(self._ops.patches)
             self._ops.gen_preds = [tf.concat(tf.split(stage_patch_pred, npatches, 0), 2) for stage_patch_pred in self._ops.gen_patch_preds]
 
