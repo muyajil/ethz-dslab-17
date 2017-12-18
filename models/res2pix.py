@@ -301,14 +301,16 @@ class Res2pix(object):
                                                             
         with tf.variable_scope("generator"):
             
-            #self._ops.gen_patch_preds = self._generator_R2I_predconn(self._ops.patches)
-            self._ops.gen_patch_preds = self._generator_R2I_decode(self._ops.patches)
+            self._ops.gen_patch_preds = self._generator_R2I_predconn(self._ops.patches)
+            #self._ops.gen_patch_preds = self._generator_R2I_decode(self._ops.patches)
             #self._ops.gen_patch_preds = self._generator_R2I_decode_2(self._ops.patches)
             self._ops.gen_preds = [tf.concat(tf.split(stage_patch_pred, npatches, 0), 2) for stage_patch_pred in self._ops.gen_patch_preds]
 
         with tf.variable_scope("discriminator"):
-            dis_out_real, dis_logits_real = self._discriminator(self._ops.patches, reuse=False)
-            dis_out_fake, dis_logits_fake = self._discriminator(self._ops.gen_patch_preds[-1], reuse=True)
+            real_images = tf.concat([self._ops.patches, self._ops.patches], 3)
+            fake_images = tf.concat([self._ops.patches, self._ops.gen_patch_preds[-1]], 3)
+            dis_out_real, dis_logits_real = self._discriminator(real_images, reuse=False)
+            dis_out_fake, dis_logits_fake = self._discriminator(fake_images, reuse=True)
 
 
         losses = []
@@ -326,7 +328,8 @@ class Res2pix(object):
                 i = 0
                 for pred in self._ops.gen_patch_preds:
                     stage_residual = self._ops.patches - pred
-                    stage_loss = tf.reduce_mean(tf.reduce_sum(tf.square(stage_residual), [1, 2, 3]))
+                    stage_loss = tf.reduce_mean(tf.reduce_sum(tf.abs(stage_residual), [1, 2, 3]))
+                    #stage_loss = tf.reduce_mean(tf.reduce_sum(tf.square(stage_residual), [1, 2, 3]))
                     losses.append(stage_loss)
                     patch_residuals.append(stage_residual)
                     loss = loss + stage_loss

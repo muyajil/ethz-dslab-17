@@ -61,7 +61,7 @@ if __name__ == "__main__":
     model = Res2pix(config=Config(args.batch_size,
                                     input_dimensions,
                                     args.log_dir,
-                                    pretrain_epochs=30,
+                                    pretrain_epochs=0,
                                     debug=True,
                                     gen_lambda=1,
                                     learning_rate=0.001,
