@@ -177,6 +177,10 @@ class Res2pix(object):
                     _, summary_str = sess.run([self._ops.gen_optimizer, self._ops.gen_summary], feed_dict={self._ops.in_img: batch})
                     writer.add_summary(summary_str, train_step)
                     
+                    # discriminator
+                    _, summary_str = sess.run([self._ops.dis_optimizer, self._ops.dis_summary], feed_dict={self._ops.in_img: batch})
+                    writer.add_summary(summary_str, train_step)
+                    
                 print("Epoch: [%2d]\tTrain Step: [%2d]\tBatch: [%2d]\tTime: %4.4f" % (epoch + 1, train_step, batch_num + 1,  time.time() - start_time))
                 
                 # evaluation
@@ -422,12 +426,10 @@ class Res2pix(object):
                 assert not tf.get_variable_scope().reuse
                 
             batchsize, height, width, channels = image.get_shape().as_list()
-
-
-            h0 = lrelu(conv2d(image, 64, name='d_h0_conv'))
-            h1 = lrelu(batch_norm(conv2d(h0, 64 * 2, name='d_h1_conv'), name='d_bn1'))
-            h2 = lrelu(batch_norm(conv2d(h1, 64 * 3, name='d_h2_conv'), name='d_bn2'))
-            h3 = lrelu(batch_norm(conv2d(h2, 64 * 8, stride_height=1, stride_width=1, name='d_h3_conv'), name='d_bn3'))
+            h0 = lrelu(conv2d(image, 128, name='d_h0_conv'))
+            h1 = lrelu(batch_norm(conv2d(h0, 128 * 2, name='d_h1_conv'), name='d_bn1'))
+            h2 = lrelu(batch_norm(conv2d(h1, 128 * 4, name='d_h2_conv'), name='d_bn2'))
+            h3 = lrelu(batch_norm(conv2d(h2, 128 * 8, stride_height=1, stride_width=1, name='d_h3_conv'), name='d_bn3'))
             h4 = linear(tf.reshape(h3, [batchsize, -1]), 1, scope='d_h3_lin')
             return tf.nn.sigmoid(h4), h4
             
