@@ -1,0 +1,11 @@
+\section{Introduction}
+
+Missions by space agencies often involve sending spacecrafts to space in order to study objects of the solar system. On October 15, 1997, for example, an unmanned spacecraft called \emph{Cassini} was launched to study the planet Saturn. After entering orbit on July 1, 2004, it spent 13 years studying the planet and its system. The \emph{Imaging Science Subsystem} (ISS), using two CCDs, took thousands of images of Saturn, its rings, and its moons. Since both the storage capacity and the network bandwidth were limited, it was necessary to use data compression in order to increase the number of images that could be taken and sent back to earth.
+
+Missions such as the Cassini mission currently use lossy image compression algorithms like JPEG. These algorithms are designed to yield good results across a large variety of image domains, and are thus not adapted to the specific domain of space exploration. 
+
+In recent years, neural networks have shown successes across many different applications. The question whether and how they can be used for the task of image compression has thus received growing interest.
+
+One natural idea would be to use autoencoders \cite{DBLP:conf/esann/KrizhevskyH11}, which are trained to optimize the reconstruction loss while having a bottleneck in the architecture. One drawback of this approach however is the fixed compression rate that is given by the dimensionality of the bottleneck layer. To allow for variable-rate compression, Toderici et al. \cite{DBLP:journals/corr/TodericiOHVMBCS15} \cite{DBLP:journals/corr/TodericiVJHMSC16} experiment with \emph{stacked} autoencoders, where multiple autoencoders are chained together and each stage is trained to reconstruct the residual of the previous stage. Baig et al. \cite{DBLP:journals/corr/abs-1709-08855} investigate different approaches for chaining succesive stages of such architectures.
+
+In this work we implement different models discribed by Baig et al. \cite{DBLP:journals/corr/abs-1709-08855} in tensorflow and see how they perform on images of the DECam DR4 dataset (\url{http://legacysurvey.org/decamls/}) We first discuss this dataset and then describe the models that were used. Finally we introduce the experiments that were done and present the results.

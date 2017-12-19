@@ -1,0 +1,49 @@
+This is BibTeX, Version 0.99d (TeX Live 2015/Debian)
+Capacity: max_strings=35307, hash_size=35307, hash_prime=30011
+The top-level auxiliary file: main.aux
+The style file: abbrv.bst
+Database file #1: main.bib
+A bad cross reference---entry "DBLP:conf/esann/KrizhevskyH11"
+refers to entry "DBLP:conf/esann/2011", which doesn't exist
+You've used 4 entries,
+            2118 wiz_defined-function locations,
+            522 strings with 4759 characters,
+and the built_in function-call counts, 1396 in all, are:
+= -- 119
+> -- 112
+< -- 0
++ -- 44
+- -- 40
+* -- 105
+:= -- 264
+add.period$ -- 12
+call.type$ -- 4
+change.case$ -- 32
+chr.to.int$ -- 0
+cite$ -- 4
+duplicate$ -- 44
+empty$ -- 80
+format.name$ -- 40
+if$ -- 267
+int.to.chr$ -- 0
+int.to.str$ -- 4
+missing$ -- 4
+newline$ -- 23
+num.names$ -- 8
+pop$ -- 30
+preamble$ -- 1
+purify$ -- 28
+quote$ -- 0
+skip$ -- 32
+stack$ -- 0
+substring$ -- 20
+swap$ -- 5
+text.length$ -- 0
+text.prefix$ -- 0
+top$ -- 0
+type$ -- 16
+warning$ -- 0
+while$ -- 8
+width$ -- 5
+write$ -- 45
+(There was 1 error message)

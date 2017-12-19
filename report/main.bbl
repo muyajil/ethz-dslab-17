@@ -1,0 +1,26 @@
+\begin{thebibliography}{1}
+
+\bibitem{DBLP:journals/corr/abs-1709-08855}
+M.~H. Baig, V.~Koltun, and L.~Torresani.
+\newblock Learning to inpaint for image compression.
+\newblock {\em CoRR}, abs/1709.08855, 2017.
+
+\bibitem{DBLP:conf/esann/KrizhevskyH11}
+A.~Krizhevsky and G.~E. Hinton.
+\newblock Using very deep autoencoders for content-based image retrieval.
+\newblock In {\em {ESANN} 2011, 19th European Symposium on Artificial Neural
+  Networks, Bruges, Belgium, April 27-29, 2011, Proceedings}, 2011.
+
+\bibitem{DBLP:journals/corr/TodericiOHVMBCS15}
+G.~Toderici, S.~M. O'Malley, S.~J. Hwang, D.~Vincent, D.~Minnen, S.~Baluja,
+  M.~Covell, and R.~Sukthankar.
+\newblock Variable rate image compression with recurrent neural networks.
+\newblock {\em CoRR}, abs/1511.06085, 2015.
+
+\bibitem{DBLP:journals/corr/TodericiVJHMSC16}
+G.~Toderici, D.~Vincent, N.~Johnston, S.~J. Hwang, D.~Minnen, J.~Shor, and
+  M.~Covell.
+\newblock Full resolution image compression with recurrent neural networks.
+\newblock {\em CoRR}, abs/1608.05148, 2016.
+
+\end{thebibliography}
