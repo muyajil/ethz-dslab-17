@@ -1,1 +1,72 @@
 \section{Dataset}
+
+For the training and evaluation of the models we used three datasets.
+%
+These were DECam DR4, the Cassini Dataset, and ImageNet.
+%
+ImageNet is a well known dataset, therefore we will not address it further.
+%
+In the following we will shortly describe the other two datasets and describe how which transformations we used before feeding them into the models.
+%
+\subsection{DECam DR4}
+%
+DECam stands for Dark Energy Camera, DR4 for data release 4.
+%
+The data we used is available at\footnote{\url{http://legacysurvey.org/dr4/}}.
+%
+In the repository at\footnote{\url{https://gitlab.com/mohammed4/data-science-lab}} there is a script that downloads the data release.
+%
+The data release 4  is part of the "DECam Legacy Survey of the SDSS Equatorial Sky", this survey aims to probe the dynamics of the expansion of the Universe and the growth of large scale structure.
+%
+We chose this dataset because of its completeness and the cleanness of the data that is provided to the public.
+%
+The data is provided in the FITS data format.
+%
+In Python we can use \texttt{astropy}\footnote{\url{http://www.astropy.org}} to read this dataformat.
+%
+The images consist of one channel, and the values per pixel range from $0$ to $2^{16}$.
+%
+Before feeding the images into the model we rescale them to a range of $[-1, 1]$ and flip the pixel values.
+%
+\todo{why did we do that again?}
+%
+\begin{figure}[H]
+	\centering
+	\begin{minipage}{0.45\textwidth}
+		\centering
+		\includegraphics[width=\linewidth]{img/decam_orig.png}
+    	\caption{DECam image original}
+	\end{minipage}\hfill
+	\begin{minipage}{0.45\textwidth}
+		\centering
+		\includegraphics[width=\linewidth]{img/decam_rescaled.png}
+    	\caption{DECam image rescaled}
+	\end{minipage}
+\end{figure}
+%
+\subsection{Cassini Dataset}
+%
+As mentioned in the introduction, Cassini is a spacecraft launched to study the planet Saturn and its system, including its rings and natural satellites.\footnote{\url{https://en.wikipedia.org/wiki/Cassini-Huygens}}
+%
+The filtered images as we used them for training the model can be obtained from here\footnote{\url{https://saturn.jpl.nasa.gov/galleries/raw-images?order=earth_date+desc&per_page=50&page=0&min_distance=1000000&max_distance=5000000&targets\%5B\%5D=SATURN&cameras\%5B\%5D=ISSWA}}
+%
+The are the wide angle images taken of saturn.
+%
+These images are already in the JPEG format, therefore the pixel values are between 0 and 255.
+%
+Before feeding them into the model we again rescaled them to the scale $[-1, 1]$.
+%
+Since we did not flip the pixel values, the rescaled image looks the same, when saved as a PNG.
+%
+Below there is again an example.
+%
+\begin{figure}[H]
+	\centering
+	\begin{minipage}{0.45\textwidth}
+		\centering
+		\includegraphics[width=\linewidth]{img/cassini_orig.jpg}
+    	\caption{Cassini image}
+	\end{minipage}
+\end{figure}
+%
+Since these images are encoded in JPEG we can use \texttt{scipy} to easily read them into an array.
