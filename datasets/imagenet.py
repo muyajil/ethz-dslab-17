@@ -4,12 +4,13 @@ from datasets.dataset import DatasetConfig
 import os
 import numpy as np
 import hashlib
+from scipy.misc import imread
 
 
-class Decam(Dataset):
+class ImageNet(Dataset):
 
     def _preprocess_pipeline(self):
-        return [lambda x: (x / 2**16), lambda x: 2*x-1, lambda x: np.arcsinh(10*x)/3]
+        return [lambda x: (x / 255), lambda x: 2*x-1]
 
     def set_seed(self, file_name):
         hash_string = hashlib.md5(file_name.encode()).hexdigest()
@@ -19,10 +20,10 @@ class Decam(Dataset):
     def _load_function(self, file_name):
         self.set_seed(file_name)
         file = os.path.join(self._config.base_path, file_name)
-        image_data = fits.getdata(file, ignore_missing_end=True)
-        height, width = image_data.shape
+        image_data = imread(file)
+        height, width, channels = image_data.shape
         # plt.imshow(pdsimage.image, cmap='gray')
-        return np.reshape(image_data, (height, width, 1))
+        return np.reshape(image_data[:, :, 0], (height, width, 1))
 
     def _crop_input(self, datapoint):
         height, width, depth = datapoint.shape
@@ -34,9 +35,17 @@ class Decam(Dataset):
             return datapoint[:, crop_width:-crop_width, :]
         if crop_width == 0:
             return datapoint[crop_height:-crop_height, :, :]
-        return datapoint[crop_height:-crop_height, crop_width:-crop_width, :]
+
+        cropped = datapoint[crop_height:-crop_height, crop_width:-crop_width, :]
+        diff_height = cropped.shape[0] - self._config.input_dimensions.height
+        diff_width = cropped.shape[1] - self._config.input_dimensions.width
+        if diff_height:
+            cropped = cropped[:-diff_height, :, :]
+        if diff_width:
+            cropped = cropped[:, :-diff_width, :]
+        return cropped
 
 
 config = DatasetConfig(augmentation_multiplicator=1)
-dataset = Decam()
+dataset = ImageNet()
 

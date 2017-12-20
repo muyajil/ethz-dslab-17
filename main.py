@@ -2,7 +2,7 @@ import argparse
 import os
 import threading
 from pydoc import locate
-from models.pix2pix import *
+from models.res2pix import *
 from utils import Dimension
 
 model = None
@@ -15,33 +15,16 @@ def run_tensorboard(logdir, pythonpath):
     return
 
 
-def run_model(run_mode, epochs, split_ratio):
-    """Runs a model based on command line arguments
-    """
-    if run_mode == "debug":
-        debug_dataset = dataset.get_debug_dataset()
-        debug_training, debug_validation = debug_dataset.split(0.66)
-        model.train(debug_training, epochs=2, validation_set=debug_validation)
-    
-    if run_mode == "test":
-        training_set, validation_set = dataset.split(split_ratio)
-        model.train(training_set, epochs, validation_set=validation_set)
-    
-    if run_mode == "prod":
-        model.train(dataset, epochs)
-
-    # model.save_model()
+def run_model(epochs, split_ratio):
+    training_set, validation_set = dataset.split(split_ratio)
+    with tf.Session() as sess:
+        model.train(sess, training_set, epochs, validation_set=validation_set)
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser("Pass the arguments for the model run")
-    # parser.add_argument("model_name", metavar="model", type=str,
-    #                     help="The name of the models that should be trained")
     parser.add_argument("dataset_name", metavar="dataset", type=str,
                         help="The name of the dataset that should be used")
-    parser.add_argument("run_mode", metavar="run_mode", type=str, 
-                        choices=["debug", "test", "prod"],
-                        help="Choose one of the run modes: debug, test, prod")
     parser.add_argument("batch_size", metavar="batch_size", type=int,
                         help="Batch size")
     parser.add_argument("epochs", metavar="epochs", type=int,
@@ -60,8 +43,6 @@ if __name__ == "__main__":
                         help="Where to save the logs to")
     parser.add_argument("pythonpath", metavar="pythonpath", type=str,
                         help="Path to your python.exe")
-    parser.add_argument("--restore_path", metavar="restore_path", type=str,
-                        help="Restore path")
 
     args = parser.parse_args()
 
@@ -74,13 +55,21 @@ if __name__ == "__main__":
     dataset_config = getattr(dataset_module, "config")
     dataset.initialize(dataset_config, args.base_path, input_dimensions, args.batch_size)
 
-    model_config = Config(args.batch_size, input_dimensions, args.log_dir, l1_lambda=10)
-    if args.restore_path != '':
-        model = Pix2pix(config=model_config, restore_path=args.restore_path)
-    else:
-        model = Pix2pix(config=model_config)
-
     t = threading.Thread(target=run_tensorboard, args=([args.log_dir, args.pythonpath]))
     t.start()
 
-    run_model(args.run_mode, args.epochs, args.split_ratio)
+    model = Res2pix(config=Config(args.batch_size,
+                                    input_dimensions,
+                                    args.log_dir,
+                                    pretrain_epochs=20,
+                                    debug=True,
+                                    gen_lambda=10,
+                                    learning_rate=0.001,
+                                    adam_beta1=0.9,
+                                    stages=8,
+                                    show_jpeg=True,
+                                    steps_between_val=50,
+                                    patch_size=256,
+                                    conv_filter_size=3,
+                                    bitplane_depth=8))
+    run_model(args.epochs, args.split_ratio)
