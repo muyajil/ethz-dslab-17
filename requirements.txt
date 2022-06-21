@@ -18,7 +18,7 @@ lockfile==0.12.2
 Markdown==2.6.9
 matplotlib==2.1.0
 msgpack-python==0.4.8
-numpy==1.13.3
+numpy==1.22.0
 olefile==0.44
 packaging==16.8
 Pillow==4.2.1
